@@ -1,0 +1,379 @@
+name: Logging and Monitoring Rules
+version: 1.0.0
+rules:
+  - id: LOG-001
+    name: CloudTrail Not Enabled
+    description: CloudTrail should be enabled in all regions to log API activity
+    severity: critical
+    category: logging
+    frameworks:
+      - cis_aws_foundations
+      - aws_well_architected
+      - nist_800_53
+      - pci_dss
+      - hipaa
+    condition:
+      any:
+        - resourceType: aws_cloudtrail
+          property: isMultiRegionTrail
+          operator: notEquals
+          value: true
+        - resourceType: aws_account
+          property: cloudTrailEnabled
+          operator: notEquals
+          value: true
+    remediation:
+      description: Enable CloudTrail in all regions with proper configuration
+      steps:
+        - Navigate to CloudTrail console
+        - Click Create trail
+        - Enable "Apply trail to all regions"
+        - Configure S3 bucket for log storage
+        - Enable log file validation
+        - Enable CloudWatch Logs integration for real-time monitoring
+        - Configure SNS notifications for critical events
+        - Enable encryption using KMS
+      code: |
+        # Example: Enable multi-region CloudTrail
+        resource "aws_cloudtrail" "main" {
+          name                          = "main-trail"
+          s3_bucket_name                = aws_s3_bucket.cloudtrail.id
+          include_global_service_events = true
+          is_multi_region_trail         = true
+          enable_log_file_validation    = true
+          
+          event_selector {
+            read_write_type           = "All"
+            include_management_events = true
+          }
+          
+          cloud_watch_logs_group_arn = "${aws_cloudwatch_log_group.cloudtrail.arn}:*"
+          cloud_watch_logs_role_arn  = aws_iam_role.cloudtrail_cloudwatch.arn
+          kms_key_id                 = aws_kms_key.cloudtrail.arn
+        }
+      references:
+        - https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-create-and-update-a-trail.html
+
+  - id: LOG-002
+    name: CloudTrail Log File Validation Disabled
+    description: CloudTrail log file validation should be enabled to detect tampering
+    severity: high
+    category: logging
+    frameworks:
+      - cis_aws_foundations
+      - nist_800_53
+    condition:
+      resourceType: aws_cloudtrail
+      property: enableLogFileValidation
+      operator: notEquals
+      value: true
+    remediation:
+      description: Enable log file validation for CloudTrail
+      steps:
+        - Navigate to CloudTrail console
+        - Select the trail
+        - Click Edit
+        - Enable "Log file validation"
+        - Save changes
+        - Use AWS CLI to validate log files periodically
+      code: |
+        # Example: Enable log file validation
+        resource "aws_cloudtrail" "main" {
+          name                       = "main-trail"
+          s3_bucket_name             = aws_s3_bucket.cloudtrail.id
+          enable_log_file_validation = true
+          # ... other configuration
+        }
+
+  - id: LOG-003
+    name: CloudTrail Logs Not Encrypted
+    description: CloudTrail logs should be encrypted using KMS
+    severity: high
+    category: logging
+    frameworks:
+      - cis_aws_foundations
+      - aws_well_architected
+      - pci_dss
+    condition:
+      resourceType: aws_cloudtrail
+      property: kmsKeyId
+      operator: notExists
+    remediation:
+      description: Enable KMS encryption for CloudTrail logs
+      steps:
+        - Create a KMS key for CloudTrail encryption
+        - Configure key policy to allow CloudTrail to use the key
+        - Update CloudTrail configuration to use the KMS key
+        - Enable automatic key rotation
+        - Verify logs are being encrypted
+      code: |
+        # Example: CloudTrail with KMS encryption
+        resource "aws_kms_key" "cloudtrail" {
+          description             = "KMS key for CloudTrail"
+          deletion_window_in_days = 10
+          enable_key_rotation     = true
+          
+          policy = jsonencode({
+            Version = "2012-10-17"
+            Statement = [
+              {
+                Sid    = "Enable IAM User Permissions"
+                Effect = "Allow"
+                Principal = {
+                  AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+                }
+                Action   = "kms:*"
+                Resource = "*"
+              },
+              {
+                Sid    = "Allow CloudTrail to encrypt logs"
+                Effect = "Allow"
+                Principal = {
+                  Service = "cloudtrail.amazonaws.com"
+                }
+                Action = [
+                  "kms:GenerateDataKey*",
+                  "kms:DecryptDataKey"
+                ]
+                Resource = "*"
+              }
+            ]
+          })
+        }
+        
+        resource "aws_cloudtrail" "main" {
+          name           = "main-trail"
+          s3_bucket_name = aws_s3_bucket.cloudtrail.id
+          kms_key_id     = aws_kms_key.cloudtrail.arn
+          # ... other configuration
+        }
+
+  - id: LOG-004
+    name: Missing CloudWatch Logs
+    description: Critical resources should send logs to CloudWatch Logs for monitoring
+    severity: medium
+    category: logging
+    frameworks:
+      - aws_well_architected
+      - nist_800_53
+    condition:
+      any:
+        - resourceType: aws_lambda_function
+          property: loggingConfig
+          operator: notExists
+        - resourceType: aws_api_gateway_stage
+          property: accessLogSettings
+          operator: notExists
+        - resourceType: aws_ecs_task_definition
+          property: containerDefinitions.logConfiguration
+          operator: notExists
+    remediation:
+      description: Configure CloudWatch Logs for resource monitoring
+      steps:
+        - Create CloudWatch Log Groups for each resource type
+        - Configure resources to send logs to CloudWatch
+        - Set appropriate log retention periods
+        - Create metric filters for important events
+        - Set up CloudWatch alarms for critical conditions
+      code: |
+        # Example: Lambda function with CloudWatch Logs
+        resource "aws_cloudwatch_log_group" "lambda" {
+          name              = "/aws/lambda/${aws_lambda_function.example.function_name}"
+          retention_in_days = 30
+        }
+        
+        resource "aws_lambda_function" "example" {
+          function_name = "my-function"
+          role          = aws_iam_role.lambda.arn
+          # ... other configuration
+        }
+
+  - id: LOG-005
+    name: AWS Config Not Enabled
+    description: AWS Config should be enabled to track resource configuration changes
+    severity: high
+    category: logging
+    frameworks:
+      - cis_aws_foundations
+      - aws_well_architected
+      - nist_800_53
+    condition:
+      any:
+        - resourceType: aws_config_configuration_recorder
+          property: recording
+          operator: notEquals
+          value: true
+        - resourceType: aws_account
+          property: configEnabled
+          operator: notEquals
+          value: true
+    remediation:
+      description: Enable AWS Config to track configuration changes
+      steps:
+        - Navigate to AWS Config console
+        - Click Get started or Set up AWS Config
+        - Select resources to record (all resources recommended)
+        - Choose or create an S3 bucket for configuration snapshots
+        - Choose or create an SNS topic for notifications
+        - Create or select an IAM role for AWS Config
+        - Enable AWS Config
+      code: |
+        # Example: Enable AWS Config
+        resource "aws_config_configuration_recorder" "main" {
+          name     = "main-recorder"
+          role_arn = aws_iam_role.config.arn
+          
+          recording_group {
+            all_supported = true
+            include_global_resource_types = true
+          }
+        }
+        
+        resource "aws_config_delivery_channel" "main" {
+          name           = "main-channel"
+          s3_bucket_name = aws_s3_bucket.config.id
+          sns_topic_arn  = aws_sns_topic.config.arn
+          
+          depends_on = [aws_config_configuration_recorder.main]
+        }
+        
+        resource "aws_config_configuration_recorder_status" "main" {
+          name       = aws_config_configuration_recorder.main.name
+          is_enabled = true
+          
+          depends_on = [aws_config_delivery_channel.main]
+        }
+      references:
+        - https://docs.aws.amazon.com/config/latest/developerguide/gs-console.html
+
+  - id: LOG-006
+    name: S3 Bucket Logging Disabled
+    description: S3 buckets should have access logging enabled for audit trails
+    severity: medium
+    category: logging
+    frameworks:
+      - cis_aws_foundations
+      - aws_well_architected
+    condition:
+      resourceType: aws_s3_bucket
+      property: logging
+      operator: notExists
+    remediation:
+      description: Enable S3 bucket access logging
+      steps:
+        - Create a separate S3 bucket for storing access logs
+        - Configure bucket policy on the log bucket to allow S3 to write logs
+        - Enable logging on the source bucket
+        - Specify the target bucket and prefix for logs
+        - Monitor and analyze logs regularly
+      code: |
+        # Example: Enable S3 bucket logging
+        resource "aws_s3_bucket_logging" "example" {
+          bucket = aws_s3_bucket.example.id
+          
+          target_bucket = aws_s3_bucket.log_bucket.id
+          target_prefix = "log/"
+        }
+
+  - id: LOG-007
+    name: Load Balancer Access Logs Disabled
+    description: Application and Network Load Balancers should have access logs enabled
+    severity: medium
+    category: logging
+    frameworks:
+      - aws_well_architected
+      - pci_dss
+    condition:
+      any:
+        - resourceType: aws_lb
+          property: accessLogs.enabled
+          operator: notEquals
+          value: true
+        - resourceType: aws_alb
+          property: accessLogs.enabled
+          operator: notEquals
+          value: true
+    remediation:
+      description: Enable access logs for load balancers
+      steps:
+        - Create an S3 bucket for storing load balancer logs
+        - Configure bucket policy to allow ELB service to write logs
+        - Enable access logs on the load balancer
+        - Specify the S3 bucket and prefix
+        - Set up log analysis using Athena or other tools
+      code: |
+        # Example: Enable ALB access logs
+        resource "aws_lb" "example" {
+          name               = "example-lb"
+          internal           = false
+          load_balancer_type = "application"
+          
+          access_logs {
+            bucket  = aws_s3_bucket.lb_logs.id
+            prefix  = "alb"
+            enabled = true
+          }
+        }
+
+  - id: LOG-008
+    name: CloudWatch Log Group Without Retention Policy
+    description: CloudWatch Log Groups should have retention policies to manage costs and compliance
+    severity: low
+    category: logging
+    frameworks:
+      - aws_well_architected
+    condition:
+      resourceType: aws_cloudwatch_log_group
+      property: retentionInDays
+      operator: notExists
+    remediation:
+      description: Set retention policies for CloudWatch Log Groups
+      steps:
+        - Review compliance and business requirements for log retention
+        - Navigate to CloudWatch Logs console
+        - Select the log group
+        - Click Actions and choose Edit retention setting
+        - Set an appropriate retention period (e.g., 30, 90, 365 days)
+        - Apply the retention policy
+      code: |
+        # Example: CloudWatch Log Group with retention
+        resource "aws_cloudwatch_log_group" "example" {
+          name              = "/aws/lambda/my-function"
+          retention_in_days = 30
+        }
+
+  - id: LOG-009
+    name: RDS Database Audit Logging Disabled
+    description: RDS databases should have audit logging enabled for compliance
+    severity: medium
+    category: logging
+    frameworks:
+      - pci_dss
+      - hipaa
+      - nist_800_53
+    condition:
+      resourceType: aws_db_instance
+      property: enabledCloudwatchLogsExports
+      operator: isEmpty
+    remediation:
+      description: Enable audit logging for RDS databases
+      steps:
+        - Modify the DB parameter group to enable audit logging
+        - For MySQL/MariaDB, enable general_log and slow_query_log
+        - For PostgreSQL, enable log_statement and log_connections
+        - Configure CloudWatch Logs export
+        - Set appropriate log retention periods
+        - Monitor logs for suspicious activity
+      code: |
+        # Example: RDS with CloudWatch Logs export
+        resource "aws_db_instance" "example" {
+          identifier = "mydb"
+          engine     = "postgres"
+          
+          enabled_cloudwatch_logs_exports = [
+            "postgresql",
+            "upgrade"
+          ]
+          
+          # ... other configuration
+        }

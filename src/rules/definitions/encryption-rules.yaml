@@ -1,0 +1,366 @@
+name: Encryption and Data Protection Rules
+version: 1.0.0
+rules:
+  - id: ENC-001
+    name: S3 Bucket Without Encryption
+    description: S3 buckets should have default encryption enabled to protect data at rest
+    severity: high
+    category: encryption
+    frameworks:
+      - cis_aws_foundations
+      - aws_well_architected
+      - pci_dss
+      - hipaa
+    condition:
+      any:
+        - resourceType: aws_s3_bucket
+          property: serverSideEncryptionConfiguration
+          operator: notExists
+        - resourceType: aws_s3_bucket
+          property: encryption
+          operator: notExists
+    remediation:
+      description: Enable default encryption on S3 buckets using AES-256 or KMS
+      steps:
+        - Navigate to S3 console and select the bucket
+        - Go to Properties tab
+        - Click on Default encryption
+        - Choose either SSE-S3 (AES-256) or SSE-KMS
+        - If using KMS, select or create a KMS key
+        - Save the encryption configuration
+      code: |
+        # Example: Enable S3 bucket encryption with KMS
+        resource "aws_s3_bucket_server_side_encryption_configuration" "example" {
+          bucket = aws_s3_bucket.example.id
+          
+          rule {
+            apply_server_side_encryption_by_default {
+              sse_algorithm     = "aws:kms"
+              kms_master_key_id = aws_kms_key.s3.arn
+            }
+          }
+        }
+      references:
+        - https://docs.aws.amazon.com/AmazonS3/latest/userguide/default-bucket-encryption.html
+
+  - id: ENC-002
+    name: RDS Database Without Encryption at Rest
+    description: RDS database instances should have encryption at rest enabled
+    severity: high
+    category: encryption
+    frameworks:
+      - cis_aws_foundations
+      - aws_well_architected
+      - pci_dss
+      - hipaa
+    condition:
+      resourceType: aws_db_instance
+      property: storageEncrypted
+      operator: notEquals
+      value: true
+    remediation:
+      description: Enable encryption at rest for RDS database instances
+      steps:
+        - Note that encryption cannot be enabled on existing unencrypted instances
+        - Create a snapshot of the unencrypted database
+        - Copy the snapshot and enable encryption during the copy
+        - Restore a new database instance from the encrypted snapshot
+        - Update application connection strings to point to the new instance
+        - Verify functionality and delete the old unencrypted instance
+      code: |
+        # Example: Create encrypted RDS instance
+        resource "aws_db_instance" "example" {
+          identifier           = "mydb"
+          engine              = "postgres"
+          instance_class      = "db.t3.micro"
+          allocated_storage   = 20
+          storage_encrypted   = true
+          kms_key_id          = aws_kms_key.rds.arn
+          
+          username = "admin"
+          password = var.db_password
+        }
+      references:
+        - https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html
+
+  - id: ENC-003
+    name: Missing KMS Key Usage
+    description: Resources should use customer-managed KMS keys instead of AWS-managed keys for better control
+    severity: medium
+    category: encryption
+    frameworks:
+      - aws_well_architected
+      - nist_800_53
+    condition:
+      any:
+        - resourceType: aws_s3_bucket_server_side_encryption_configuration
+          property: rule.applyServerSideEncryptionByDefault.sseAlgorithm
+          operator: equals
+          value: AES256
+        - resourceType: aws_ebs_volume
+          all:
+            - property: encrypted
+              operator: equals
+              value: true
+            - property: kmsKeyId
+              operator: notExists
+    remediation:
+      description: Use customer-managed KMS keys for encryption to enable key rotation and access control
+      steps:
+        - Create a customer-managed KMS key in AWS KMS
+        - Configure key policy to grant appropriate permissions
+        - Enable automatic key rotation
+        - Update resource encryption configuration to use the KMS key
+        - Monitor key usage through CloudTrail
+      code: |
+        # Example: Create and use customer-managed KMS key
+        resource "aws_kms_key" "example" {
+          description             = "KMS key for S3 encryption"
+          deletion_window_in_days = 10
+          enable_key_rotation     = true
+        }
+        
+        resource "aws_s3_bucket_server_side_encryption_configuration" "example" {
+          bucket = aws_s3_bucket.example.id
+          
+          rule {
+            apply_server_side_encryption_by_default {
+              sse_algorithm     = "aws:kms"
+              kms_master_key_id = aws_kms_key.example.arn
+            }
+          }
+        }
+
+  - id: ENC-004
+    name: Missing TLS/SSL Enforcement
+    description: Resources should enforce TLS/SSL for data in transit
+    severity: high
+    category: encryption
+    frameworks:
+      - cis_aws_foundations
+      - aws_well_architected
+      - pci_dss
+      - hipaa
+    condition:
+      any:
+        - resourceType: aws_s3_bucket_policy
+          property: policy.Statement
+          operator: notContains
+          value:
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+        - resourceType: aws_lb_listener
+          all:
+            - property: protocol
+              operator: equals
+              value: HTTP
+            - property: port
+              operator: equals
+              value: 80
+        - resourceType: aws_cloudfront_distribution
+          property: viewerProtocolPolicy
+          operator: notEquals
+          value: redirect-to-https
+    remediation:
+      description: Enforce TLS/SSL for all data in transit
+      steps:
+        - For S3 buckets, add a bucket policy that denies non-HTTPS requests
+        - For load balancers, configure HTTPS listeners with valid SSL certificates
+        - For CloudFront, set viewer protocol policy to redirect-to-https or https-only
+        - For RDS, enable SSL/TLS connections and require them in the application
+        - Test all connections to ensure TLS is enforced
+      code: |
+        # Example: S3 bucket policy enforcing HTTPS
+        resource "aws_s3_bucket_policy" "enforce_tls" {
+          bucket = aws_s3_bucket.example.id
+          
+          policy = jsonencode({
+            Version = "2012-10-17"
+            Statement = [{
+              Sid       = "DenyInsecureTransport"
+              Effect    = "Deny"
+              Principal = "*"
+              Action    = "s3:*"
+              Resource = [
+                aws_s3_bucket.example.arn,
+                "${aws_s3_bucket.example.arn}/*"
+              ]
+              Condition = {
+                Bool = {
+                  "aws:SecureTransport" = "false"
+                }
+              }
+            }]
+          })
+        }
+
+  - id: ENC-005
+    name: Public S3 Bucket Access
+    description: S3 buckets should not allow public access unless explicitly required
+    severity: critical
+    category: storage
+    frameworks:
+      - cis_aws_foundations
+      - aws_well_architected
+      - pci_dss
+      - hipaa
+    condition:
+      any:
+        - resourceType: aws_s3_bucket
+          property: acl
+          operator: equals
+          value: public-read
+        - resourceType: aws_s3_bucket
+          property: acl
+          operator: equals
+          value: public-read-write
+        - resourceType: aws_s3_bucket_public_access_block
+          any:
+            - property: blockPublicAcls
+              operator: notEquals
+              value: true
+            - property: blockPublicPolicy
+              operator: notEquals
+              value: true
+            - property: ignorePublicAcls
+              operator: notEquals
+              value: true
+            - property: restrictPublicBuckets
+              operator: notEquals
+              value: true
+    remediation:
+      description: Block public access to S3 buckets and use CloudFront or signed URLs for controlled access
+      steps:
+        - Review if public access is truly required
+        - Enable S3 Block Public Access settings at bucket and account level
+        - Remove public ACLs and bucket policies that grant public access
+        - For content delivery, use CloudFront with Origin Access Identity
+        - For temporary access, use pre-signed URLs
+        - Audit bucket policies regularly
+      code: |
+        # Example: Block public access to S3 bucket
+        resource "aws_s3_bucket_public_access_block" "example" {
+          bucket = aws_s3_bucket.example.id
+          
+          block_public_acls       = true
+          block_public_policy     = true
+          ignore_public_acls      = true
+          restrict_public_buckets = true
+        }
+        
+        resource "aws_s3_bucket_acl" "example" {
+          bucket = aws_s3_bucket.example.id
+          acl    = "private"
+        }
+      references:
+        - https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html
+
+  - id: ENC-006
+    name: EBS Volume Without Encryption
+    description: EBS volumes should be encrypted to protect data at rest
+    severity: high
+    category: encryption
+    frameworks:
+      - cis_aws_foundations
+      - aws_well_architected
+      - pci_dss
+      - hipaa
+    condition:
+      resourceType: aws_ebs_volume
+      property: encrypted
+      operator: notEquals
+      value: true
+    remediation:
+      description: Enable encryption for EBS volumes
+      steps:
+        - For new volumes, enable encryption when creating the volume
+        - For existing volumes, create a snapshot and copy it with encryption enabled
+        - Create a new encrypted volume from the encrypted snapshot
+        - Attach the new volume to the instance
+        - Enable EBS encryption by default in account settings
+      code: |
+        # Example: Create encrypted EBS volume
+        resource "aws_ebs_volume" "example" {
+          availability_zone = "us-west-2a"
+          size              = 40
+          encrypted         = true
+          kms_key_id        = aws_kms_key.ebs.arn
+          
+          tags = {
+            Name = "Encrypted Volume"
+          }
+        }
+
+  - id: ENC-007
+    name: RDS Database Without Encryption in Transit
+    description: RDS database connections should enforce SSL/TLS encryption
+    severity: high
+    category: encryption
+    frameworks:
+      - aws_well_architected
+      - pci_dss
+      - hipaa
+    condition:
+      resourceType: aws_db_instance
+      property: caCertificateIdentifier
+      operator: notExists
+    remediation:
+      description: Configure RDS to require SSL/TLS connections
+      steps:
+        - Modify the DB parameter group to set rds.force_ssl to 1
+        - Apply the parameter group to the database instance
+        - Update application connection strings to use SSL
+        - Download and configure RDS CA certificates in the application
+        - Test connections to ensure SSL is working
+      code: |
+        # Example: RDS parameter group enforcing SSL
+        resource "aws_db_parameter_group" "example" {
+          name   = "rds-ssl-enforcement"
+          family = "postgres13"
+          
+          parameter {
+            name  = "rds.force_ssl"
+            value = "1"
+          }
+        }
+        
+        resource "aws_db_instance" "example" {
+          identifier          = "mydb"
+          engine              = "postgres"
+          parameter_group_name = aws_db_parameter_group.example.name
+          # ... other configuration
+        }
+
+  - id: ENC-008
+    name: Secrets Manager Secret Without KMS Encryption
+    description: Secrets Manager secrets should use customer-managed KMS keys for encryption
+    severity: medium
+    category: encryption
+    frameworks:
+      - aws_well_architected
+      - nist_800_53
+    condition:
+      resourceType: aws_secretsmanager_secret
+      property: kmsKeyId
+      operator: notExists
+    remediation:
+      description: Configure Secrets Manager to use customer-managed KMS keys
+      steps:
+        - Create a customer-managed KMS key for Secrets Manager
+        - Configure key policy to allow Secrets Manager to use the key
+        - Update the secret to use the KMS key
+        - Enable automatic key rotation
+        - Monitor key usage through CloudTrail
+      code: |
+        # Example: Secrets Manager with KMS encryption
+        resource "aws_secretsmanager_secret" "example" {
+          name       = "my-secret"
+          kms_key_id = aws_kms_key.secrets.arn
+        }
+        
+        resource "aws_kms_key" "secrets" {
+          description             = "KMS key for Secrets Manager"
+          deletion_window_in_days = 10
+          enable_key_rotation     = true
+        }

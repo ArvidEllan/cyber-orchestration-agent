@@ -1,0 +1,297 @@
+name: Network Security Rules
+version: 1.0.0
+rules:
+  - id: NET-001
+    name: Security Group Allows Unrestricted Ingress
+    description: Security groups should not allow unrestricted ingress from 0.0.0.0/0 on all ports
+    severity: critical
+    category: network
+    frameworks:
+      - cis_aws_foundations
+      - aws_well_architected
+      - nist_800_53
+    condition:
+      any:
+        - resourceType: aws_security_group
+          property: ingress
+          operator: contains
+          value:
+            cidrBlocks:
+              - "0.0.0.0/0"
+        - resourceType: aws_security_group_rule
+          all:
+            - property: type
+              operator: equals
+              value: ingress
+            - property: cidrBlocks
+              operator: contains
+              value: "0.0.0.0/0"
+    remediation:
+      description: Restrict security group ingress rules to specific IP ranges or security groups
+      steps:
+        - Identify the legitimate sources that need access
+        - Replace 0.0.0.0/0 with specific CIDR blocks or security group references
+        - Test connectivity from authorized sources
+        - Remove the overly permissive rule
+        - Document the allowed sources for future reference
+      code: |
+        # Example: Restrict to specific CIDR block
+        resource "aws_security_group_rule" "example" {
+          type              = "ingress"
+          from_port         = 443
+          to_port           = 443
+          protocol          = "tcp"
+          cidr_blocks       = ["10.0.0.0/8"]  # Specific network instead of 0.0.0.0/0
+          security_group_id = aws_security_group.example.id
+        }
+
+  - id: NET-002
+    name: Unrestricted SSH Access
+    description: Security groups should not allow SSH access (port 22) from 0.0.0.0/0
+    severity: critical
+    category: network
+    frameworks:
+      - cis_aws_foundations
+      - aws_well_architected
+      - pci_dss
+    condition:
+      any:
+        - resourceType: aws_security_group
+          all:
+            - property: ingress
+              operator: contains
+              value:
+                fromPort: 22
+                cidrBlocks:
+                  - "0.0.0.0/0"
+        - resourceType: aws_security_group_rule
+          all:
+            - property: type
+              operator: equals
+              value: ingress
+            - property: fromPort
+              operator: equals
+              value: 22
+            - property: cidrBlocks
+              operator: contains
+              value: "0.0.0.0/0"
+    remediation:
+      description: Restrict SSH access to specific trusted IP addresses or use AWS Systems Manager Session Manager
+      steps:
+        - Identify the IP addresses that require SSH access
+        - Update the security group rule to allow only those specific IPs
+        - Consider using AWS Systems Manager Session Manager as an alternative to direct SSH
+        - Implement bastion hosts or VPN for remote access
+        - Enable VPC Flow Logs to monitor SSH connection attempts
+      code: |
+        # Example: Restrict SSH to specific IP
+        resource "aws_security_group_rule" "ssh" {
+          type              = "ingress"
+          from_port         = 22
+          to_port           = 22
+          protocol          = "tcp"
+          cidr_blocks       = ["203.0.113.0/24"]  # Your office IP range
+          security_group_id = aws_security_group.example.id
+        }
+      references:
+        - https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html
+
+  - id: NET-003
+    name: Unrestricted RDP Access
+    description: Security groups should not allow RDP access (port 3389) from 0.0.0.0/0
+    severity: critical
+    category: network
+    frameworks:
+      - cis_aws_foundations
+      - aws_well_architected
+      - pci_dss
+    condition:
+      any:
+        - resourceType: aws_security_group
+          all:
+            - property: ingress
+              operator: contains
+              value:
+                fromPort: 3389
+                cidrBlocks:
+                  - "0.0.0.0/0"
+        - resourceType: aws_security_group_rule
+          all:
+            - property: type
+              operator: equals
+              value: ingress
+            - property: fromPort
+              operator: equals
+              value: 3389
+            - property: cidrBlocks
+              operator: contains
+              value: "0.0.0.0/0"
+    remediation:
+      description: Restrict RDP access to specific trusted IP addresses or use AWS Systems Manager Session Manager
+      steps:
+        - Identify the IP addresses that require RDP access
+        - Update the security group rule to allow only those specific IPs
+        - Consider using AWS Systems Manager Session Manager for Windows instances
+        - Implement Remote Desktop Gateway for secure access
+        - Enable VPC Flow Logs to monitor RDP connection attempts
+      code: |
+        # Example: Restrict RDP to specific IP
+        resource "aws_security_group_rule" "rdp" {
+          type              = "ingress"
+          from_port         = 3389
+          to_port           = 3389
+          protocol          = "tcp"
+          cidr_blocks       = ["203.0.113.0/24"]  # Your office IP range
+          security_group_id = aws_security_group.example.id
+        }
+
+  - id: NET-004
+    name: VPC Flow Logs Not Enabled
+    description: VPC Flow Logs should be enabled to capture network traffic information for security analysis
+    severity: medium
+    category: network
+    frameworks:
+      - cis_aws_foundations
+      - aws_well_architected
+      - nist_800_53
+    condition:
+      resourceType: aws_vpc
+      property: flowLogsEnabled
+      operator: notEquals
+      value: true
+    remediation:
+      description: Enable VPC Flow Logs for network traffic monitoring
+      steps:
+        - Navigate to VPC console and select your VPC
+        - Click on Flow Logs tab
+        - Click Create flow log
+        - Choose the traffic to capture (All, Accepted, or Rejected)
+        - Select a destination (CloudWatch Logs or S3)
+        - Create or select an IAM role with appropriate permissions
+        - Enable the flow log
+      code: |
+        # Example: Enable VPC Flow Logs
+        resource "aws_flow_log" "vpc_flow_log" {
+          vpc_id          = aws_vpc.main.id
+          traffic_type    = "ALL"
+          iam_role_arn    = aws_iam_role.flow_log_role.arn
+          log_destination = aws_cloudwatch_log_group.flow_log.arn
+        }
+      references:
+        - https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html
+
+  - id: NET-005
+    name: Public Subnet Auto-Assign Public IP
+    description: Subnets should not automatically assign public IP addresses unless specifically required
+    severity: medium
+    category: network
+    frameworks:
+      - aws_well_architected
+    condition:
+      all:
+        - resourceType: aws_subnet
+          property: mapPublicIpOnLaunch
+          operator: equals
+          value: true
+        - resourceType: aws_subnet
+          property: tags.Environment
+          operator: equals
+          value: production
+    remediation:
+      description: Disable automatic public IP assignment for subnets that don't require it
+      steps:
+        - Review which resources in the subnet actually need public IPs
+        - For resources that need internet access, use NAT Gateway instead
+        - Disable auto-assign public IP on the subnet
+        - Manually assign Elastic IPs only to resources that specifically need them
+        - Use private subnets for resources that don't need direct internet access
+      code: |
+        # Example: Disable auto-assign public IP
+        resource "aws_subnet" "private" {
+          vpc_id                  = aws_vpc.main.id
+          cidr_block              = "10.0.1.0/24"
+          map_public_ip_on_launch = false
+          
+          tags = {
+            Name = "Private Subnet"
+          }
+        }
+
+  - id: NET-006
+    name: Default Security Group Allows Traffic
+    description: The default security group should not allow any inbound or outbound traffic
+    severity: high
+    category: network
+    frameworks:
+      - cis_aws_foundations
+      - aws_well_architected
+    condition:
+      all:
+        - resourceType: aws_security_group
+          property: name
+          operator: equals
+          value: default
+        - any:
+            - property: ingress
+              operator: isNotEmpty
+            - property: egress
+              operator: isNotEmpty
+    remediation:
+      description: Remove all rules from the default security group
+      steps:
+        - Identify resources using the default security group
+        - Create custom security groups with appropriate rules
+        - Migrate resources to the custom security groups
+        - Remove all ingress and egress rules from the default security group
+        - Ensure no new resources use the default security group
+      code: |
+        # Example: Restrict default security group
+        resource "aws_default_security_group" "default" {
+          vpc_id = aws_vpc.main.id
+          
+          # No ingress or egress rules
+        }
+
+  - id: NET-007
+    name: Network ACL Allows Unrestricted Ingress
+    description: Network ACLs should not allow unrestricted ingress from 0.0.0.0/0 on all ports
+    severity: high
+    category: network
+    frameworks:
+      - aws_well_architected
+      - nist_800_53
+    condition:
+      resourceType: aws_network_acl_rule
+      all:
+        - property: egress
+          operator: equals
+          value: false
+        - property: cidrBlock
+          operator: equals
+          value: "0.0.0.0/0"
+        - property: ruleAction
+          operator: equals
+          value: allow
+        - property: protocol
+          operator: equals
+          value: "-1"
+    remediation:
+      description: Configure Network ACLs with specific rules based on the principle of least privilege
+      steps:
+        - Review the network traffic requirements for the subnet
+        - Create specific allow rules for required protocols and ports
+        - Remove overly permissive rules
+        - Test connectivity to ensure legitimate traffic is allowed
+        - Document the NACL rules and their purpose
+      code: |
+        # Example: Specific NACL rules
+        resource "aws_network_acl_rule" "https" {
+          network_acl_id = aws_network_acl.main.id
+          rule_number    = 100
+          egress         = false
+          protocol       = "tcp"
+          rule_action    = "allow"
+          cidr_block     = "10.0.0.0/8"
+          from_port      = 443
+          to_port        = 443
+        }

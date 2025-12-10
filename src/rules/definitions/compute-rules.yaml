@@ -1,0 +1,420 @@
+name: Compute and Container Security Rules
+version: 1.0.0
+rules:
+  - id: COMP-001
+    name: Lambda Function with Overly Permissive Role
+    description: Lambda functions should not have IAM roles with wildcard permissions or full administrative access
+    severity: high
+    category: compute
+    frameworks:
+      - cis_aws_foundations
+      - aws_well_architected
+      - nist_800_53
+    condition:
+      resourceType: aws_lambda_function
+      property: role.policies
+      operator: contains
+      value:
+        Statement:
+          Action: "*"
+    remediation:
+      description: Apply least privilege principle to Lambda function IAM roles
+      steps:
+        - Review the Lambda function code to understand required permissions
+        - Create a custom IAM policy with specific permissions
+        - Remove wildcard permissions from the role
+        - Test the function to ensure it has necessary permissions
+        - Monitor CloudWatch Logs for access denied errors
+        - Adjust permissions as needed based on actual usage
+      code: |
+        # Example: Lambda with least privilege role
+        resource "aws_iam_role" "lambda" {
+          name = "lambda-execution-role"
+          
+          assume_role_policy = jsonencode({
+            Version = "2012-10-17"
+            Statement = [{
+              Action = "sts:AssumeRole"
+              Effect = "Allow"
+              Principal = {
+                Service = "lambda.amazonaws.com"
+              }
+            }]
+          })
+        }
+        
+        resource "aws_iam_role_policy" "lambda" {
+          name = "lambda-policy"
+          role = aws_iam_role.lambda.id
+          
+          policy = jsonencode({
+            Version = "2012-10-17"
+            Statement = [{
+              Effect = "Allow"
+              Action = [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents",
+                "s3:GetObject"
+              ]
+              Resource = [
+                "arn:aws:logs:*:*:*",
+                "arn:aws:s3:::my-bucket/*"
+              ]
+            }]
+          })
+        }
+      references:
+        - https://docs.aws.amazon.com/lambda/latest/dg/lambda-intro-execution-role.html
+
+  - id: COMP-002
+    name: EKS Cluster with Public Endpoint
+    description: EKS cluster API endpoints should not be publicly accessible in production environments
+    severity: high
+    category: container
+    frameworks:
+      - cis_aws_foundations
+      - aws_well_architected
+    condition:
+      all:
+        - resourceType: aws_eks_cluster
+          property: vpcConfig.endpointPublicAccess
+          operator: equals
+          value: true
+        - resourceType: aws_eks_cluster
+          property: tags.Environment
+          operator: equals
+          value: production
+    remediation:
+      description: Restrict EKS cluster endpoint access to private networks
+      steps:
+        - Enable private endpoint access for the cluster
+        - Disable public endpoint access or restrict it to specific CIDR blocks
+        - Configure VPN or AWS Direct Connect for cluster access
+        - Update kubeconfig to use private endpoint
+        - Test cluster access from authorized networks
+        - Monitor cluster access logs
+      code: |
+        # Example: EKS cluster with restricted endpoint access
+        resource "aws_eks_cluster" "main" {
+          name     = "production-cluster"
+          role_arn = aws_iam_role.eks_cluster.arn
+          
+          vpc_config {
+            subnet_ids              = aws_subnet.private[*].id
+            endpoint_private_access = true
+            endpoint_public_access  = false
+            # Or restrict public access to specific IPs
+            # endpoint_public_access = true
+            # public_access_cidrs    = ["203.0.113.0/24"]
+          }
+          
+          tags = {
+            Environment = "production"
+          }
+        }
+      references:
+        - https://docs.aws.amazon.com/eks/latest/userguide/cluster-endpoint.html
+
+  - id: COMP-003
+    name: EC2 Instance with Public IP in Production
+    description: EC2 instances in production should not have public IP addresses unless specifically required
+    severity: medium
+    category: compute
+    frameworks:
+      - aws_well_architected
+      - nist_800_53
+    condition:
+      all:
+        - resourceType: aws_instance
+          property: associatePublicIpAddress
+          operator: equals
+          value: true
+        - resourceType: aws_instance
+          property: tags.Environment
+          operator: equals
+          value: production
+    remediation:
+      description: Remove public IP addresses from production EC2 instances
+      steps:
+        - Identify if the instance truly needs direct internet access
+        - For outbound internet access, use NAT Gateway instead
+        - For inbound access, use Application Load Balancer or API Gateway
+        - Launch replacement instances without public IPs in private subnets
+        - Migrate workloads to the new instances
+        - Terminate instances with public IPs
+      code: |
+        # Example: EC2 instance in private subnet without public IP
+        resource "aws_instance" "app" {
+          ami                         = data.aws_ami.amazon_linux.id
+          instance_type               = "t3.micro"
+          subnet_id                   = aws_subnet.private.id
+          associate_public_ip_address = false
+          
+          tags = {
+            Name        = "App Server"
+            Environment = "production"
+          }
+        }
+
+  - id: COMP-004
+    name: Lambda Function Not in VPC
+    description: Lambda functions accessing private resources should be configured to run in a VPC
+    severity: medium
+    category: compute
+    frameworks:
+      - aws_well_architected
+    condition:
+      resourceType: aws_lambda_function
+      property: vpcConfig
+      operator: notExists
+    remediation:
+      description: Configure Lambda function to run in VPC when accessing private resources
+      steps:
+        - Identify if the function needs to access VPC resources (RDS, ElastiCache, etc.)
+        - Create or identify appropriate subnets for Lambda
+        - Create a security group for the Lambda function
+        - Configure VPC settings in the Lambda function
+        - Ensure the function's IAM role has EC2 network interface permissions
+        - Test function connectivity to VPC resources
+      code: |
+        # Example: Lambda function in VPC
+        resource "aws_lambda_function" "example" {
+          function_name = "vpc-function"
+          role          = aws_iam_role.lambda.arn
+          
+          vpc_config {
+            subnet_ids         = aws_subnet.private[*].id
+            security_group_ids = [aws_security_group.lambda.id]
+          }
+          
+          # ... other configuration
+        }
+      references:
+        - https://docs.aws.amazon.com/lambda/latest/dg/configuration-vpc.html
+
+  - id: COMP-005
+    name: ECS Task Definition with Privileged Container
+    description: ECS containers should not run in privileged mode unless absolutely necessary
+    severity: high
+    category: container
+    frameworks:
+      - cis_aws_foundations
+      - aws_well_architected
+    condition:
+      resourceType: aws_ecs_task_definition
+      property: containerDefinitions.privileged
+      operator: equals
+      value: true
+    remediation:
+      description: Remove privileged mode from ECS containers
+      steps:
+        - Review why privileged mode was enabled
+        - Use specific Linux capabilities instead of privileged mode
+        - Update task definition to remove privileged flag
+        - Test container functionality
+        - Deploy updated task definition
+      code: |
+        # Example: ECS task definition without privileged mode
+        resource "aws_ecs_task_definition" "app" {
+          family = "app"
+          
+          container_definitions = jsonencode([{
+            name      = "app"
+            image     = "nginx:latest"
+            privileged = false
+            # Use specific capabilities if needed
+            # linuxParameters = {
+            #   capabilities = {
+            #     add = ["NET_ADMIN"]
+            #   }
+            # }
+          }])
+        }
+
+  - id: COMP-006
+    name: EC2 Instance Without IMDSv2
+    description: EC2 instances should use IMDSv2 to protect against SSRF attacks
+    severity: medium
+    category: compute
+    frameworks:
+      - aws_well_architected
+      - nist_800_53
+    condition:
+      resourceType: aws_instance
+      property: metadataOptions.httpTokens
+      operator: notEquals
+      value: required
+    remediation:
+      description: Enable IMDSv2 on EC2 instances
+      steps:
+        - Update instance metadata options to require IMDSv2
+        - Test applications to ensure they work with IMDSv2
+        - Update any scripts or code that access instance metadata
+        - Apply the change to all instances
+        - Monitor for any issues
+      code: |
+        # Example: EC2 instance with IMDSv2 required
+        resource "aws_instance" "example" {
+          ami           = data.aws_ami.amazon_linux.id
+          instance_type = "t3.micro"
+          
+          metadata_options {
+            http_endpoint               = "enabled"
+            http_tokens                 = "required"
+            http_put_response_hop_limit = 1
+          }
+        }
+      references:
+        - https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html
+
+  - id: COMP-007
+    name: Lambda Function with Excessive Timeout
+    description: Lambda functions should have appropriate timeout values to prevent runaway executions
+    severity: low
+    category: compute
+    frameworks:
+      - aws_well_architected
+    condition:
+      resourceType: aws_lambda_function
+      property: timeout
+      operator: greaterThan
+      value: 300
+    remediation:
+      description: Set appropriate timeout values for Lambda functions
+      steps:
+        - Analyze function execution times from CloudWatch metrics
+        - Set timeout to slightly above the 99th percentile execution time
+        - Ensure timeout is not unnecessarily high
+        - Test function with the new timeout
+        - Monitor for timeout errors
+      code: |
+        # Example: Lambda with appropriate timeout
+        resource "aws_lambda_function" "example" {
+          function_name = "my-function"
+          role          = aws_iam_role.lambda.arn
+          timeout       = 30  # 30 seconds instead of 15 minutes
+          
+          # ... other configuration
+        }
+
+  - id: COMP-008
+    name: EKS Cluster Without Secrets Encryption
+    description: EKS clusters should encrypt Kubernetes secrets using KMS
+    severity: high
+    category: container
+    frameworks:
+      - cis_aws_foundations
+      - aws_well_architected
+      - pci_dss
+    condition:
+      resourceType: aws_eks_cluster
+      property: encryptionConfig
+      operator: notExists
+    remediation:
+      description: Enable secrets encryption for EKS cluster
+      steps:
+        - Create a KMS key for EKS secrets encryption
+        - Note that encryption can only be enabled during cluster creation
+        - For existing clusters, create a new cluster with encryption enabled
+        - Migrate workloads to the new encrypted cluster
+        - Delete the old unencrypted cluster
+      code: |
+        # Example: EKS cluster with secrets encryption
+        resource "aws_kms_key" "eks" {
+          description             = "EKS Secret Encryption Key"
+          deletion_window_in_days = 10
+          enable_key_rotation     = true
+        }
+        
+        resource "aws_eks_cluster" "main" {
+          name     = "my-cluster"
+          role_arn = aws_iam_role.eks_cluster.arn
+          
+          encryption_config {
+            provider {
+              key_arn = aws_kms_key.eks.arn
+            }
+            resources = ["secrets"]
+          }
+          
+          vpc_config {
+            subnet_ids = aws_subnet.private[*].id
+          }
+        }
+      references:
+        - https://docs.aws.amazon.com/eks/latest/userguide/enable-kms.html
+
+  - id: COMP-009
+    name: EC2 Instance Without Detailed Monitoring
+    description: Production EC2 instances should have detailed monitoring enabled
+    severity: low
+    category: compute
+    frameworks:
+      - aws_well_architected
+    condition:
+      all:
+        - resourceType: aws_instance
+          property: monitoring
+          operator: notEquals
+          value: true
+        - resourceType: aws_instance
+          property: tags.Environment
+          operator: equals
+          value: production
+    remediation:
+      description: Enable detailed monitoring for production EC2 instances
+      steps:
+        - Navigate to EC2 console
+        - Select the instance
+        - Click Actions > Monitor and troubleshoot > Manage detailed monitoring
+        - Enable detailed monitoring
+        - Note that detailed monitoring incurs additional costs
+        - Set up CloudWatch alarms based on detailed metrics
+      code: |
+        # Example: EC2 instance with detailed monitoring
+        resource "aws_instance" "app" {
+          ami           = data.aws_ami.amazon_linux.id
+          instance_type = "t3.micro"
+          monitoring    = true
+          
+          tags = {
+            Environment = "production"
+          }
+        }
+
+  - id: COMP-010
+    name: Lambda Function Without Reserved Concurrency
+    description: Critical Lambda functions should have reserved concurrency to prevent throttling
+    severity: low
+    category: compute
+    frameworks:
+      - aws_well_architected
+    condition:
+      all:
+        - resourceType: aws_lambda_function
+          property: reservedConcurrentExecutions
+          operator: notExists
+        - resourceType: aws_lambda_function
+          property: tags.Criticality
+          operator: equals
+          value: high
+    remediation:
+      description: Configure reserved concurrency for critical Lambda functions
+      steps:
+        - Analyze function invocation patterns and concurrency needs
+        - Determine appropriate reserved concurrency value
+        - Configure reserved concurrency in Lambda settings
+        - Monitor function throttling metrics
+        - Adjust reserved concurrency as needed
+      code: |
+        # Example: Lambda with reserved concurrency
+        resource "aws_lambda_function" "critical" {
+          function_name                  = "critical-function"
+          role                           = aws_iam_role.lambda.arn
+          reserved_concurrent_executions = 10
+          
+          tags = {
+            Criticality = "high"
+          }
+        }

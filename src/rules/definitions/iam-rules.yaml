@@ -1,0 +1,22 @@
+﻿name: IAM Security Rules
+version: 1.0.0
+rules:
+  - id: IAM-001
+    name: Wildcard IAM Policy Actions
+    description: IAM policies should not contain wildcard actions
+    severity: critical
+    category: iam
+    frameworks:
+      - cis_aws_foundations
+      - aws_well_architected
+    condition:
+      resourceType: aws_iam_policy
+      property: document.Statement
+      operator: contains
+      value:
+        Action: "*"
+    remediation:
+      description: Replace wildcard actions with specific permissions
+      steps:
+        - Review the policy
+        - Replace Action with specific permissions

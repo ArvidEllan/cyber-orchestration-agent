@@ -1,0 +1,512 @@
+name: API Security Rules
+version: 1.0.0
+rules:
+  - id: API-001
+    name: API Gateway Without Authentication
+    description: API Gateway endpoints should have authentication enabled (IAM, Cognito, or Lambda authorizer)
+    severity: critical
+    category: api
+    frameworks:
+      - cis_aws_foundations
+      - aws_well_architected
+      - owasp_api_security
+    condition:
+      any:
+        - resourceType: aws_api_gateway_method
+          all:
+            - property: httpMethod
+              operator: notEquals
+              value: OPTIONS
+            - property: authorizationType
+              operator: equals
+              value: NONE
+        - resourceType: aws_apigatewayv2_route
+          property: authorizationType
+          operator: equals
+          value: NONE
+    remediation:
+      description: Enable authentication for API Gateway endpoints
+      steps:
+        - Determine the appropriate authentication method (IAM, Cognito, Lambda)
+        - For IAM authentication, configure AWS_IAM authorization type
+        - For Cognito, create a user pool and configure COGNITO_USER_POOLS
+        - For custom logic, create a Lambda authorizer
+        - Update API Gateway method to use the authorizer
+        - Test API access with valid credentials
+        - Ensure OPTIONS method remains unauthenticated for CORS
+      code: |
+        # Example: API Gateway with IAM authentication
+        resource "aws_api_gateway_method" "example" {
+          rest_api_id   = aws_api_gateway_rest_api.example.id
+          resource_id   = aws_api_gateway_resource.example.id
+          http_method   = "GET"
+          authorization = "AWS_IAM"
+        }
+        
+        # Example: API Gateway with Cognito authorizer
+        resource "aws_api_gateway_authorizer" "cognito" {
+          name          = "cognito-authorizer"
+          rest_api_id   = aws_api_gateway_rest_api.example.id
+          type          = "COGNITO_USER_POOLS"
+          provider_arns = [aws_cognito_user_pool.main.arn]
+        }
+        
+        resource "aws_api_gateway_method" "protected" {
+          rest_api_id   = aws_api_gateway_rest_api.example.id
+          resource_id   = aws_api_gateway_resource.example.id
+          http_method   = "POST"
+          authorization = "COGNITO_USER_POOLS"
+          authorizer_id = aws_api_gateway_authorizer.cognito.id
+        }
+      references:
+        - https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-control-access-to-api.html
+
+  - id: API-002
+    name: API Gateway Without Throttling
+    description: API Gateway should have throttling configured to prevent abuse and manage costs
+    severity: medium
+    category: api
+    frameworks:
+      - aws_well_architected
+      - owasp_api_security
+    condition:
+      any:
+        - resourceType: aws_api_gateway_stage
+          property: throttleSettings
+          operator: notExists
+        - resourceType: aws_api_gateway_usage_plan
+          property: throttleSettings
+          operator: notExists
+    remediation:
+      description: Configure throttling limits for API Gateway
+      steps:
+        - Determine appropriate rate and burst limits based on expected traffic
+        - Configure default throttling at the stage level
+        - Create usage plans for different client tiers
+        - Set method-level throttling for sensitive endpoints
+        - Monitor throttling metrics in CloudWatch
+        - Adjust limits based on actual usage patterns
+      code: |
+        # Example: API Gateway stage with throttling
+        resource "aws_api_gateway_stage" "prod" {
+          deployment_id = aws_api_gateway_deployment.example.id
+          rest_api_id   = aws_api_gateway_rest_api.example.id
+          stage_name    = "prod"
+          
+          throttle_settings {
+            rate_limit  = 1000  # requests per second
+            burst_limit = 2000  # burst capacity
+          }
+        }
+        
+        # Example: Usage plan with throttling
+        resource "aws_api_gateway_usage_plan" "standard" {
+          name = "standard-plan"
+          
+          api_stages {
+            api_id = aws_api_gateway_rest_api.example.id
+            stage  = aws_api_gateway_stage.prod.stage_name
+          }
+          
+          throttle_settings {
+            rate_limit  = 100
+            burst_limit = 200
+          }
+          
+          quota_settings {
+            limit  = 10000
+            period = "DAY"
+          }
+        }
+      references:
+        - https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-request-throttling.html
+
+  - id: API-003
+    name: API Gateway Without Logging
+    description: API Gateway should have access logging and execution logging enabled
+    severity: medium
+    category: api
+    frameworks:
+      - aws_well_architected
+      - pci_dss
+      - nist_800_53
+    condition:
+      any:
+        - resourceType: aws_api_gateway_stage
+          property: accessLogSettings
+          operator: notExists
+        - resourceType: aws_api_gateway_stage
+          all:
+            - property: xrayTracingEnabled
+              operator: notEquals
+              value: true
+    remediation:
+      description: Enable logging for API Gateway
+      steps:
+        - Create a CloudWatch Log Group for API Gateway logs
+        - Create an IAM role for API Gateway to write to CloudWatch
+        - Enable access logging on the API Gateway stage
+        - Enable execution logging for debugging (use INFO or ERROR level)
+        - Enable X-Ray tracing for distributed tracing
+        - Set appropriate log retention periods
+        - Create CloudWatch alarms for errors and latency
+      code: |
+        # Example: API Gateway with comprehensive logging
+        resource "aws_cloudwatch_log_group" "api_gateway" {
+          name              = "/aws/apigateway/${aws_api_gateway_rest_api.example.name}"
+          retention_in_days = 30
+        }
+        
+        resource "aws_api_gateway_stage" "prod" {
+          deployment_id = aws_api_gateway_deployment.example.id
+          rest_api_id   = aws_api_gateway_rest_api.example.id
+          stage_name    = "prod"
+          
+          access_log_settings {
+            destination_arn = aws_cloudwatch_log_group.api_gateway.arn
+            format = jsonencode({
+              requestId      = "$context.requestId"
+              ip             = "$context.identity.sourceIp"
+              caller         = "$context.identity.caller"
+              user           = "$context.identity.user"
+              requestTime    = "$context.requestTime"
+              httpMethod     = "$context.httpMethod"
+              resourcePath   = "$context.resourcePath"
+              status         = "$context.status"
+              protocol       = "$context.protocol"
+              responseLength = "$context.responseLength"
+            })
+          }
+          
+          xray_tracing_enabled = true
+        }
+        
+        resource "aws_api_gateway_method_settings" "all" {
+          rest_api_id = aws_api_gateway_rest_api.example.id
+          stage_name  = aws_api_gateway_stage.prod.stage_name
+          method_path = "*/*"
+          
+          settings {
+            logging_level      = "INFO"
+            data_trace_enabled = true
+            metrics_enabled    = true
+          }
+        }
+      references:
+        - https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-logging.html
+
+  - id: API-004
+    name: API Gateway Without WAF
+    description: Public API Gateway endpoints should be protected by AWS WAF
+    severity: high
+    category: api
+    frameworks:
+      - aws_well_architected
+      - owasp_api_security
+    condition:
+      resourceType: aws_api_gateway_stage
+      property: webAclArn
+      operator: notExists
+    remediation:
+      description: Attach AWS WAF to API Gateway
+      steps:
+        - Create a WAF Web ACL with appropriate rules
+        - Add managed rule groups (Core Rule Set, Known Bad Inputs)
+        - Configure rate-based rules to prevent DDoS
+        - Add IP reputation lists
+        - Associate the Web ACL with the API Gateway stage
+        - Monitor WAF metrics and blocked requests
+        - Tune rules based on legitimate traffic patterns
+      code: |
+        # Example: API Gateway with WAF protection
+        resource "aws_wafv2_web_acl" "api" {
+          name  = "api-gateway-waf"
+          scope = "REGIONAL"
+          
+          default_action {
+            allow {}
+          }
+          
+          rule {
+            name     = "RateLimitRule"
+            priority = 1
+            
+            action {
+              block {}
+            }
+            
+            statement {
+              rate_based_statement {
+                limit              = 2000
+                aggregate_key_type = "IP"
+              }
+            }
+            
+            visibility_config {
+              cloudwatch_metrics_enabled = true
+              metric_name                = "RateLimitRule"
+              sampled_requests_enabled   = true
+            }
+          }
+          
+          rule {
+            name     = "AWSManagedRulesCommonRuleSet"
+            priority = 2
+            
+            override_action {
+              none {}
+            }
+            
+            statement {
+              managed_rule_group_statement {
+                name        = "AWSManagedRulesCommonRuleSet"
+                vendor_name = "AWS"
+              }
+            }
+            
+            visibility_config {
+              cloudwatch_metrics_enabled = true
+              metric_name                = "AWSManagedRulesCommonRuleSet"
+              sampled_requests_enabled   = true
+            }
+          }
+          
+          visibility_config {
+            cloudwatch_metrics_enabled = true
+            metric_name                = "api-gateway-waf"
+            sampled_requests_enabled   = true
+          }
+        }
+        
+        resource "aws_wafv2_web_acl_association" "api" {
+          resource_arn = aws_api_gateway_stage.prod.arn
+          web_acl_arn  = aws_wafv2_web_acl.api.arn
+        }
+      references:
+        - https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-control-access-aws-waf.html
+
+  - id: API-005
+    name: API Gateway Without Request Validation
+    description: API Gateway should validate request parameters and body to prevent invalid inputs
+    severity: medium
+    category: api
+    frameworks:
+      - owasp_api_security
+      - aws_well_architected
+    condition:
+      resourceType: aws_api_gateway_method
+      property: requestValidatorId
+      operator: notExists
+    remediation:
+      description: Enable request validation for API Gateway
+      steps:
+        - Create request validators for the API
+        - Define request models using JSON Schema
+        - Configure method request validation
+        - Validate query parameters, headers, and request body
+        - Test with valid and invalid requests
+        - Monitor validation errors in CloudWatch
+      code: |
+        # Example: API Gateway with request validation
+        resource "aws_api_gateway_request_validator" "example" {
+          name                        = "request-validator"
+          rest_api_id                 = aws_api_gateway_rest_api.example.id
+          validate_request_body       = true
+          validate_request_parameters = true
+        }
+        
+        resource "aws_api_gateway_model" "example" {
+          rest_api_id  = aws_api_gateway_rest_api.example.id
+          name         = "UserModel"
+          content_type = "application/json"
+          
+          schema = jsonencode({
+            type = "object"
+            required = ["name", "email"]
+            properties = {
+              name = {
+                type = "string"
+              }
+              email = {
+                type = "string"
+                format = "email"
+              }
+            }
+          })
+        }
+        
+        resource "aws_api_gateway_method" "example" {
+          rest_api_id          = aws_api_gateway_rest_api.example.id
+          resource_id          = aws_api_gateway_resource.example.id
+          http_method          = "POST"
+          authorization        = "AWS_IAM"
+          request_validator_id = aws_api_gateway_request_validator.example.id
+          
+          request_models = {
+            "application/json" = aws_api_gateway_model.example.name
+          }
+        }
+
+  - id: API-006
+    name: API Gateway Without CORS Configuration
+    description: API Gateway should have proper CORS configuration when accessed from browsers
+    severity: low
+    category: api
+    frameworks:
+      - owasp_api_security
+    condition:
+      resourceType: aws_api_gateway_method
+      all:
+        - property: httpMethod
+          operator: equals
+          value: OPTIONS
+        - property: methodResponses
+          operator: notContains
+          value:
+            responseParameters:
+              method.response.header.Access-Control-Allow-Origin: true
+    remediation:
+      description: Configure CORS properly for API Gateway
+      steps:
+        - Enable CORS in API Gateway console or IaC
+        - Configure allowed origins (avoid using * in production)
+        - Set allowed methods and headers
+        - Configure credentials support if needed
+        - Test CORS from a browser application
+        - Ensure OPTIONS method is configured correctly
+      code: |
+        # Example: API Gateway with CORS
+        resource "aws_api_gateway_method" "options" {
+          rest_api_id   = aws_api_gateway_rest_api.example.id
+          resource_id   = aws_api_gateway_resource.example.id
+          http_method   = "OPTIONS"
+          authorization = "NONE"
+        }
+        
+        resource "aws_api_gateway_method_response" "options" {
+          rest_api_id = aws_api_gateway_rest_api.example.id
+          resource_id = aws_api_gateway_resource.example.id
+          http_method = aws_api_gateway_method.options.http_method
+          status_code = "200"
+          
+          response_parameters = {
+            "method.response.header.Access-Control-Allow-Headers" = true
+            "method.response.header.Access-Control-Allow-Methods" = true
+            "method.response.header.Access-Control-Allow-Origin"  = true
+          }
+        }
+        
+        resource "aws_api_gateway_integration" "options" {
+          rest_api_id = aws_api_gateway_rest_api.example.id
+          resource_id = aws_api_gateway_resource.example.id
+          http_method = aws_api_gateway_method.options.http_method
+          type        = "MOCK"
+          
+          request_templates = {
+            "application/json" = "{\"statusCode\": 200}"
+          }
+        }
+        
+        resource "aws_api_gateway_integration_response" "options" {
+          rest_api_id = aws_api_gateway_rest_api.example.id
+          resource_id = aws_api_gateway_resource.example.id
+          http_method = aws_api_gateway_method.options.http_method
+          status_code = aws_api_gateway_method_response.options.status_code
+          
+          response_parameters = {
+            "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,PUT,DELETE,OPTIONS'"
+            "method.response.header.Access-Control-Allow-Origin"  = "'https://example.com'"
+          }
+        }
+
+  - id: API-007
+    name: API Gateway Without Resource Policy
+    description: API Gateway should have a resource policy to control access
+    severity: medium
+    category: api
+    frameworks:
+      - aws_well_architected
+    condition:
+      resourceType: aws_api_gateway_rest_api
+      property: policy
+      operator: notExists
+    remediation:
+      description: Configure resource policy for API Gateway
+      steps:
+        - Determine access requirements (VPC, IP, AWS account)
+        - Create a resource policy document
+        - Attach the policy to the API Gateway
+        - Test access from allowed and denied sources
+        - Monitor access attempts
+      code: |
+        # Example: API Gateway with resource policy
+        resource "aws_api_gateway_rest_api_policy" "example" {
+          rest_api_id = aws_api_gateway_rest_api.example.id
+          
+          policy = jsonencode({
+            Version = "2012-10-17"
+            Statement = [{
+              Effect = "Allow"
+              Principal = "*"
+              Action = "execute-api:Invoke"
+              Resource = "${aws_api_gateway_rest_api.example.execution_arn}/*"
+              Condition = {
+                IpAddress = {
+                  "aws:SourceIp" = ["203.0.113.0/24"]
+                }
+              }
+            }]
+          })
+        }
+
+  - id: API-008
+    name: API Gateway Stage Without Cache Encryption
+    description: API Gateway cache should be encrypted when caching is enabled
+    severity: medium
+    category: api
+    frameworks:
+      - aws_well_architected
+      - pci_dss
+    condition:
+      all:
+        - resourceType: aws_api_gateway_stage
+          property: cacheClusterEnabled
+          operator: equals
+          value: true
+        - resourceType: aws_api_gateway_stage
+          property: cacheClusterEncrypted
+          operator: notEquals
+          value: true
+    remediation:
+      description: Enable cache encryption for API Gateway
+      steps:
+        - Navigate to API Gateway console
+        - Select the stage
+        - Enable cache encryption in cache settings
+        - Redeploy the API if necessary
+        - Monitor cache performance
+      code: |
+        # Example: API Gateway with encrypted cache
+        resource "aws_api_gateway_stage" "prod" {
+          deployment_id = aws_api_gateway_deployment.example.id
+          rest_api_id   = aws_api_gateway_rest_api.example.id
+          stage_name    = "prod"
+          
+          cache_cluster_enabled = true
+          cache_cluster_size    = "0.5"
+          
+          # This is set via method settings
+        }
+        
+        resource "aws_api_gateway_method_settings" "all" {
+          rest_api_id = aws_api_gateway_rest_api.example.id
+          stage_name  = aws_api_gateway_stage.prod.stage_name
+          method_path = "*/*"
+          
+          settings {
+            caching_enabled        = true
+            cache_data_encrypted   = true
+            cache_ttl_in_seconds   = 300
+          }
+        }
