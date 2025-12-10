@@ -242,22 +242,28 @@ This implementation plan breaks down the Infrastructure Security Review Agent in
   - _Requirements: 8.1, 8.2_
 
 
+
 - [ ] 5.2 Implement GuardDuty and Security Hub integration
   - Create GuardDutyAnalyzer to fetch and parse GuardDuty findings
   - Create SecurityHubAnalyzer to aggregate Security Hub findings
   - Normalize findings to common Finding interface
+
+
   - _Requirements: 8.3, 8.4_
 
 - [ ] 5.3 Implement event correlation engine
   - Create EventCorrelator to identify related security events
   - Implement time-window based correlation
   - Detect privilege escalation + access key creation patterns
+
+
   - Detect suspicious IAM activity + network changes
   - Generate CorrelatedThreat objects with attack timelines
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5_
 
 - [ ] 5.4 Implement vulnerability checking
   - Create VulnerabilityChecker to identify EOL Lambda runtimes
+
   - Implement CVE database integration (NVD API)
   - Check EC2 AMIs against known vulnerabilities
   - Check container images for vulnerabilities
