@@ -34,8 +34,6 @@ infra-agent compliance --framework cis --format json
 ```
 
 ## Project Structure
-
-
 src/
 ├── types/          # Core TypeScript interfaces and types
 ├── parsers/        # IaC parsers (Terraform, CloudFormation, CDK)
