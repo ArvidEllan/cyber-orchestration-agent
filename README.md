@@ -1,6 +1,8 @@
 # Infrastructure Security Review Agent
 
+
 A comprehensive security analysis system for AWS cloud infrastructure that evaluates Infrastructure-as-Code (IaC), audits live AWS environments, detects threats, generates compliance reports, and provides AI-driven remediation recommendations.
+
 
 ## Features
 
@@ -10,6 +12,7 @@ A comprehensive security analysis system for AWS cloud infrastructure that evalu
 - **Compliance Mapping**: Map findings to CIS, ISO 27001, NIST 800-53, and other frameworks
 - **AI-Driven Remediation**: Generate actionable fixes and automated pull requests
 - **Multi-Format Reports**: Export reports in PDF, JSON, CSV, and Markdown
+
 
 ## Installation
 
@@ -32,7 +35,7 @@ infra-agent compliance --framework cis --format json
 
 ## Project Structure
 
-```
+
 src/
 ├── types/          # Core TypeScript interfaces and types
 ├── parsers/        # IaC parsers (Terraform, CloudFormation, CDK)
@@ -46,7 +49,6 @@ src/
 ├── database/       # Findings storage and retrieval
 ├── ai/            # AI reasoning engine
 └── utils/         # Utility functions
-```
 
 ## Development
 
