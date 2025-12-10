@@ -1,0 +1,689 @@
+name: ISO/IEC 27001:2013
+version: "2013"
+framework: iso_27001
+description: ISO/IEC 27001:2013 Information Security Management System controls
+
+controls:
+  - id: "A.5.1.1"
+    name: "Policies for information security"
+    requirement: "Information security policies must be defined and approved"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.5.1.2"
+    name: "Review of the policies for information security"
+    requirement: "Information security policies must be reviewed regularly"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.6.1.1"
+    name: "Information security roles and responsibilities"
+    requirement: "Security roles and responsibilities must be defined"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.6.1.2"
+    name: "Segregation of duties"
+    requirement: "Conflicting duties must be segregated"
+    category: iam
+    ruleIds: ["IAM-001", "IAM-003"]
+    
+  - id: "A.6.1.3"
+    name: "Contact with authorities"
+    requirement: "Contacts with authorities must be maintained"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.6.1.4"
+    name: "Contact with special interest groups"
+    requirement: "Contacts with security groups must be maintained"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.6.1.5"
+    name: "Information security in project management"
+    requirement: "Security must be addressed in project management"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.6.2.1"
+    name: "Mobile device policy"
+    requirement: "Mobile device usage policy must be implemented"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.6.2.2"
+    name: "Teleworking"
+    requirement: "Teleworking security policy must be implemented"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.7.1.1"
+    name: "Screening"
+    requirement: "Background verification checks must be performed"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.7.1.2"
+    name: "Terms and conditions of employment"
+    requirement: "Employment agreements must include security responsibilities"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.7.2.1"
+    name: "Management responsibilities"
+    requirement: "Management must require security compliance"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.7.2.2"
+    name: "Information security awareness, education, and training"
+    requirement: "Security awareness training must be provided"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.7.2.3"
+    name: "Disciplinary process"
+    requirement: "Disciplinary process for security violations must exist"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.7.3.1"
+    name: "Termination or change of employment responsibilities"
+    requirement: "Access rights must be removed upon termination"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.8.1.1"
+    name: "Inventory of assets"
+    requirement: "Assets must be identified and inventoried"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.8.1.2"
+    name: "Ownership of assets"
+    requirement: "Assets must have identified owners"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.8.1.3"
+    name: "Acceptable use of assets"
+    requirement: "Acceptable use rules must be identified and documented"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.8.1.4"
+    name: "Return of assets"
+    requirement: "Assets must be returned upon termination"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.8.2.1"
+    name: "Classification of information"
+    requirement: "Information must be classified by sensitivity"
+    category: storage
+    ruleIds: []
+    
+  - id: "A.8.2.2"
+    name: "Labelling of information"
+    requirement: "Information must be labeled according to classification"
+    category: storage
+    ruleIds: []
+    
+  - id: "A.8.2.3"
+    name: "Handling of assets"
+    requirement: "Assets must be handled according to classification"
+    category: storage
+    ruleIds: []
+    
+  - id: "A.8.3.1"
+    name: "Management of removable media"
+    requirement: "Removable media must be managed securely"
+    category: storage
+    ruleIds: []
+    
+  - id: "A.8.3.2"
+    name: "Disposal of media"
+    requirement: "Media must be disposed of securely"
+    category: storage
+    ruleIds: []
+    
+  - id: "A.8.3.3"
+    name: "Physical media transfer"
+    requirement: "Media transfers must be protected"
+    category: storage
+    ruleIds: []
+    
+  - id: "A.9.1.1"
+    name: "Access control policy"
+    requirement: "Access control policy must be established"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.9.1.2"
+    name: "Access to networks and network services"
+    requirement: "Network access must be controlled"
+    category: network
+    ruleIds: ["NET-001"]
+    
+  - id: "A.9.2.1"
+    name: "User registration and de-registration"
+    requirement: "User access must be provisioned and de-provisioned"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.9.2.2"
+    name: "User access provisioning"
+    requirement: "User access provisioning process must be formal"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.9.2.3"
+    name: "Management of privileged access rights"
+    requirement: "Privileged access must be restricted and controlled"
+    category: iam
+    ruleIds: ["IAM-001", "IAM-003"]
+    
+  - id: "A.9.2.4"
+    name: "Management of secret authentication information"
+    requirement: "Authentication secrets must be managed securely"
+    category: iam
+    ruleIds: ["IAM-004"]
+    
+  - id: "A.9.2.5"
+    name: "Review of user access rights"
+    requirement: "User access rights must be reviewed regularly"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.9.2.6"
+    name: "Removal or adjustment of access rights"
+    requirement: "Access rights must be removed when no longer needed"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.9.3.1"
+    name: "Use of secret authentication information"
+    requirement: "Users must follow practices for secret authentication"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.9.4.1"
+    name: "Information access restriction"
+    requirement: "Access to information must be restricted"
+    category: iam
+    ruleIds: ["IAM-001", "IAM-003"]
+    
+  - id: "A.9.4.2"
+    name: "Secure log-on procedures"
+    requirement: "Secure log-on procedures must be implemented"
+    category: iam
+    ruleIds: ["IAM-002"]
+    
+  - id: "A.9.4.3"
+    name: "Password management system"
+    requirement: "Password management system must be implemented"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.9.4.4"
+    name: "Use of privileged utility programs"
+    requirement: "Privileged utilities must be restricted"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.9.4.5"
+    name: "Access control to program source code"
+    requirement: "Source code access must be restricted"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.10.1.1"
+    name: "Policy on the use of cryptographic controls"
+    requirement: "Cryptographic controls policy must be defined"
+    category: encryption
+    ruleIds: []
+    
+  - id: "A.10.1.2"
+    name: "Key management"
+    requirement: "Cryptographic key management must be implemented"
+    category: encryption
+    ruleIds: ["ENC-003"]
+    
+  - id: "A.11.1.1"
+    name: "Physical security perimeter"
+    requirement: "Physical security perimeters must be defined"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.11.1.2"
+    name: "Physical entry controls"
+    requirement: "Physical entry controls must be implemented"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.11.1.3"
+    name: "Securing offices, rooms and facilities"
+    requirement: "Offices and facilities must be physically secured"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.11.1.4"
+    name: "Protecting against external and environmental threats"
+    requirement: "Protection against environmental threats must be implemented"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.11.1.5"
+    name: "Working in secure areas"
+    requirement: "Secure area procedures must be implemented"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.11.1.6"
+    name: "Delivery and loading areas"
+    requirement: "Delivery areas must be controlled"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.11.2.1"
+    name: "Equipment siting and protection"
+    requirement: "Equipment must be sited and protected appropriately"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.11.2.2"
+    name: "Supporting utilities"
+    requirement: "Supporting utilities must be adequate"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.11.2.3"
+    name: "Cabling security"
+    requirement: "Cabling must be protected"
+    category: network
+    ruleIds: []
+    
+  - id: "A.11.2.4"
+    name: "Equipment maintenance"
+    requirement: "Equipment must be maintained correctly"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.11.2.5"
+    name: "Removal of assets"
+    requirement: "Asset removal must be authorized"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.11.2.6"
+    name: "Security of equipment and assets off-premises"
+    requirement: "Off-premises assets must be secured"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.11.2.7"
+    name: "Secure disposal or reuse of equipment"
+    requirement: "Equipment must be securely disposed or reused"
+    category: storage
+    ruleIds: []
+    
+  - id: "A.11.2.8"
+    name: "Unattended user equipment"
+    requirement: "Unattended equipment must be protected"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.11.2.9"
+    name: "Clear desk and clear screen policy"
+    requirement: "Clear desk and screen policy must be implemented"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.12.1.1"
+    name: "Documented operating procedures"
+    requirement: "Operating procedures must be documented"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.12.1.2"
+    name: "Change management"
+    requirement: "Changes must be controlled"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.12.1.3"
+    name: "Capacity management"
+    requirement: "Capacity must be monitored and projected"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.12.1.4"
+    name: "Separation of development, testing and operational environments"
+    requirement: "Environments must be separated"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.12.2.1"
+    name: "Controls against malware"
+    requirement: "Malware protection must be implemented"
+    category: compute
+    ruleIds: []
+    
+  - id: "A.12.3.1"
+    name: "Information backup"
+    requirement: "Information must be backed up regularly"
+    category: storage
+    ruleIds: []
+    
+  - id: "A.12.4.1"
+    name: "Event logging"
+    requirement: "Event logs must be produced and retained"
+    category: logging
+    ruleIds: ["LOG-001", "LOG-002"]
+    
+  - id: "A.12.4.2"
+    name: "Protection of log information"
+    requirement: "Log information must be protected"
+    category: logging
+    ruleIds: ["LOG-001"]
+    
+  - id: "A.12.4.3"
+    name: "Administrator and operator logs"
+    requirement: "Administrator activities must be logged"
+    category: logging
+    ruleIds: ["LOG-001"]
+    
+  - id: "A.12.4.4"
+    name: "Clock synchronization"
+    requirement: "System clocks must be synchronized"
+    category: logging
+    ruleIds: []
+    
+  - id: "A.12.5.1"
+    name: "Installation of software on operational systems"
+    requirement: "Software installation must be controlled"
+    category: compute
+    ruleIds: []
+    
+  - id: "A.12.6.1"
+    name: "Management of technical vulnerabilities"
+    requirement: "Technical vulnerabilities must be managed"
+    category: compute
+    ruleIds: []
+    
+  - id: "A.12.6.2"
+    name: "Restrictions on software installation"
+    requirement: "Software installation must be restricted"
+    category: compute
+    ruleIds: []
+    
+  - id: "A.12.7.1"
+    name: "Information systems audit controls"
+    requirement: "Audit requirements must be agreed and planned"
+    category: logging
+    ruleIds: []
+    
+  - id: "A.13.1.1"
+    name: "Network controls"
+    requirement: "Networks must be managed and controlled"
+    category: network
+    ruleIds: ["NET-001"]
+    
+  - id: "A.13.1.2"
+    name: "Security of network services"
+    requirement: "Network services security must be identified"
+    category: network
+    ruleIds: []
+    
+  - id: "A.13.1.3"
+    name: "Segregation in networks"
+    requirement: "Networks must be segregated"
+    category: network
+    ruleIds: []
+    
+  - id: "A.13.2.1"
+    name: "Information transfer policies and procedures"
+    requirement: "Information transfer must be controlled"
+    category: network
+    ruleIds: []
+    
+  - id: "A.13.2.2"
+    name: "Agreements on information transfer"
+    requirement: "Transfer agreements must be established"
+    category: network
+    ruleIds: []
+    
+  - id: "A.13.2.3"
+    name: "Electronic messaging"
+    requirement: "Electronic messaging must be protected"
+    category: network
+    ruleIds: []
+    
+  - id: "A.13.2.4"
+    name: "Confidentiality or non-disclosure agreements"
+    requirement: "Confidentiality agreements must be in place"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.14.1.1"
+    name: "Information security requirements analysis and specification"
+    requirement: "Security requirements must be included in requirements"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.14.1.2"
+    name: "Securing application services on public networks"
+    requirement: "Public network services must be secured"
+    category: network
+    ruleIds: ["ENC-004"]
+    
+  - id: "A.14.1.3"
+    name: "Protecting application services transactions"
+    requirement: "Application transactions must be protected"
+    category: encryption
+    ruleIds: ["ENC-004"]
+    
+  - id: "A.14.2.1"
+    name: "Secure development policy"
+    requirement: "Secure development policy must be established"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.14.2.2"
+    name: "System change control procedures"
+    requirement: "System changes must be controlled"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.14.2.3"
+    name: "Technical review of applications after operating platform changes"
+    requirement: "Applications must be reviewed after platform changes"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.14.2.4"
+    name: "Restrictions on changes to software packages"
+    requirement: "Package modifications must be discouraged"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.14.2.5"
+    name: "Secure system engineering principles"
+    requirement: "Secure engineering principles must be applied"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.14.2.6"
+    name: "Secure development environment"
+    requirement: "Development environment must be secured"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.14.2.7"
+    name: "Outsourced development"
+    requirement: "Outsourced development must be supervised"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.14.2.8"
+    name: "System security testing"
+    requirement: "Security testing must be performed"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.14.2.9"
+    name: "System acceptance testing"
+    requirement: "Acceptance testing must include security"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.14.3.1"
+    name: "Protection of test data"
+    requirement: "Test data must be protected"
+    category: storage
+    ruleIds: []
+    
+  - id: "A.15.1.1"
+    name: "Information security policy for supplier relationships"
+    requirement: "Supplier security policy must be established"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.15.1.2"
+    name: "Addressing security within supplier agreements"
+    requirement: "Supplier agreements must address security"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.15.1.3"
+    name: "Information and communication technology supply chain"
+    requirement: "ICT supply chain must be secured"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.15.2.1"
+    name: "Monitoring and review of supplier services"
+    requirement: "Supplier services must be monitored"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.15.2.2"
+    name: "Managing changes to supplier services"
+    requirement: "Supplier service changes must be managed"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.16.1.1"
+    name: "Responsibilities and procedures"
+    requirement: "Incident response responsibilities must be established"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.16.1.2"
+    name: "Reporting information security events"
+    requirement: "Security events must be reported"
+    category: logging
+    ruleIds: []
+    
+  - id: "A.16.1.3"
+    name: "Reporting information security weaknesses"
+    requirement: "Security weaknesses must be reported"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.16.1.4"
+    name: "Assessment of and decision on information security events"
+    requirement: "Security events must be assessed"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.16.1.5"
+    name: "Response to information security incidents"
+    requirement: "Security incidents must be responded to"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.16.1.6"
+    name: "Learning from information security incidents"
+    requirement: "Lessons must be learned from incidents"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.16.1.7"
+    name: "Collection of evidence"
+    requirement: "Evidence must be collected properly"
+    category: logging
+    ruleIds: ["LOG-001"]
+    
+  - id: "A.17.1.1"
+    name: "Planning information security continuity"
+    requirement: "Security continuity must be planned"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.17.1.2"
+    name: "Implementing information security continuity"
+    requirement: "Security continuity must be implemented"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.17.1.3"
+    name: "Verify, review and evaluate information security continuity"
+    requirement: "Security continuity must be verified"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.17.2.1"
+    name: "Availability of information processing facilities"
+    requirement: "Processing facilities must be redundant"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.18.1.1"
+    name: "Identification of applicable legislation and contractual requirements"
+    requirement: "Legal requirements must be identified"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.18.1.2"
+    name: "Intellectual property rights"
+    requirement: "Intellectual property must be protected"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.18.1.3"
+    name: "Protection of records"
+    requirement: "Records must be protected"
+    category: storage
+    ruleIds: ["ENC-001"]
+    
+  - id: "A.18.1.4"
+    name: "Privacy and protection of personally identifiable information"
+    requirement: "PII must be protected"
+    category: encryption
+    ruleIds: ["ENC-001", "ENC-002"]
+    
+  - id: "A.18.1.5"
+    name: "Regulation of cryptographic controls"
+    requirement: "Cryptographic controls must comply with regulations"
+    category: encryption
+    ruleIds: []
+    
+  - id: "A.18.2.1"
+    name: "Independent review of information security"
+    requirement: "Security must be independently reviewed"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.18.2.2"
+    name: "Compliance with security policies and standards"
+    requirement: "Compliance with policies must be verified"
+    category: iam
+    ruleIds: []
+    
+  - id: "A.18.2.3"
+    name: "Technical compliance review"
+    requirement: "Technical compliance must be reviewed"
+    category: iam
+    ruleIds: []

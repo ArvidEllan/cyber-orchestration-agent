@@ -1,0 +1,287 @@
+name: CIS AWS Foundations Benchmark
+version: "1.5.0"
+framework: cis_aws_foundations
+description: Center for Internet Security AWS Foundations Benchmark v1.5.0
+
+controls:
+  - id: "1.1"
+    name: "Maintain current contact details"
+    requirement: "Ensure security contact information is registered"
+    category: iam
+    ruleIds: []
+    
+  - id: "1.2"
+    name: "Ensure security contact information is registered"
+    requirement: "AWS account security contact information must be current"
+    category: iam
+    ruleIds: []
+    
+  - id: "1.3"
+    name: "Ensure security questions are registered and verified"
+    requirement: "Security questions must be registered in the AWS account"
+    category: iam
+    ruleIds: []
+    
+  - id: "1.4"
+    name: "Ensure no root user account access key exists"
+    requirement: "Root user access keys must not exist"
+    category: iam
+    ruleIds: ["IAM-005"]
+    
+  - id: "1.5"
+    name: "Ensure MFA is enabled for the root user account"
+    requirement: "Multi-factor authentication must be enabled for root account"
+    category: iam
+    ruleIds: ["IAM-002"]
+    
+  - id: "1.6"
+    name: "Ensure hardware MFA is enabled for the root user account"
+    requirement: "Hardware MFA device must be enabled for root account"
+    category: iam
+    ruleIds: ["IAM-002"]
+    
+  - id: "1.7"
+    name: "Eliminate use of the root user for administrative and daily tasks"
+    requirement: "Root user must not be used for daily operations"
+    category: iam
+    ruleIds: ["IAM-005"]
+    
+  - id: "1.8"
+    name: "Ensure IAM password policy requires minimum length of 14 or greater"
+    requirement: "Password policy must require minimum 14 characters"
+    category: iam
+    ruleIds: []
+    
+  - id: "1.9"
+    name: "Ensure IAM password policy prevents password reuse"
+    requirement: "Password policy must prevent reuse of previous passwords"
+    category: iam
+    ruleIds: []
+    
+  - id: "1.10"
+    name: "Ensure multi-factor authentication (MFA) is enabled for all IAM users"
+    requirement: "MFA must be enabled for all IAM users with console access"
+    category: iam
+    ruleIds: ["IAM-002"]
+    
+  - id: "1.11"
+    name: "Do not setup access keys during initial user setup"
+    requirement: "Access keys must not be created during initial IAM user setup"
+    category: iam
+    ruleIds: []
+    
+  - id: "1.12"
+    name: "Ensure credentials unused for 45 days or greater are disabled"
+    requirement: "Unused credentials must be disabled after 45 days"
+    category: iam
+    ruleIds: ["IAM-004"]
+    
+  - id: "1.13"
+    name: "Ensure there is only one active access key available for any single IAM user"
+    requirement: "IAM users must have at most one active access key"
+    category: iam
+    ruleIds: []
+    
+  - id: "1.14"
+    name: "Ensure access keys are rotated every 90 days or less"
+    requirement: "Access keys must be rotated at least every 90 days"
+    category: iam
+    ruleIds: ["IAM-004"]
+    
+  - id: "1.15"
+    name: "Ensure IAM Users Receive Permissions Only Through Groups"
+    requirement: "IAM users must receive permissions through group membership"
+    category: iam
+    ruleIds: []
+    
+  - id: "1.16"
+    name: "Ensure IAM policies that allow full administrative privileges are not attached"
+    requirement: "IAM policies with full administrative privileges must not be attached"
+    category: iam
+    ruleIds: ["IAM-001", "IAM-003"]
+    
+  - id: "1.17"
+    name: "Ensure a support role has been created to manage incidents with AWS Support"
+    requirement: "Support role must exist for AWS Support access"
+    category: iam
+    ruleIds: []
+    
+  - id: "1.18"
+    name: "Ensure IAM instance roles are used for AWS resource access from instances"
+    requirement: "EC2 instances must use IAM roles for AWS resource access"
+    category: iam
+    ruleIds: []
+    
+  - id: "1.19"
+    name: "Ensure that all expired SSL/TLS certificates are removed"
+    requirement: "Expired SSL/TLS certificates must be removed from IAM"
+    category: iam
+    ruleIds: []
+    
+  - id: "1.20"
+    name: "Ensure that IAM Access analyzer is enabled"
+    requirement: "IAM Access Analyzer must be enabled"
+    category: iam
+    ruleIds: []
+    
+  - id: "1.21"
+    name: "Ensure IAM users are managed centrally via identity federation or AWS Organizations"
+    requirement: "IAM users should be managed through federation or Organizations"
+    category: iam
+    ruleIds: []
+    
+  - id: "2.1.1"
+    name: "Ensure all S3 buckets employ encryption-at-rest"
+    requirement: "S3 buckets must have encryption at rest enabled"
+    category: encryption
+    ruleIds: ["ENC-001"]
+    
+  - id: "2.1.2"
+    name: "Ensure S3 Bucket Policy is set to deny HTTP requests"
+    requirement: "S3 bucket policies must deny non-HTTPS requests"
+    category: encryption
+    ruleIds: ["ENC-004"]
+    
+  - id: "2.1.3"
+    name: "Ensure MFA Delete is enabled on S3 buckets"
+    requirement: "S3 buckets must have MFA Delete enabled"
+    category: storage
+    ruleIds: []
+    
+  - id: "2.1.4"
+    name: "Ensure all data in Amazon S3 has been discovered, classified and secured"
+    requirement: "S3 data must be discovered, classified, and secured"
+    category: storage
+    ruleIds: []
+    
+  - id: "2.1.5"
+    name: "Ensure that S3 Buckets are configured with Block public access"
+    requirement: "S3 buckets must block public access"
+    category: storage
+    ruleIds: ["ENC-005"]
+    
+  - id: "2.2.1"
+    name: "Ensure EBS volume encryption is enabled"
+    requirement: "EBS volumes must have encryption enabled"
+    category: encryption
+    ruleIds: ["ENC-002"]
+    
+  - id: "2.3.1"
+    name: "Ensure that encryption is enabled for RDS Instances"
+    requirement: "RDS instances must have encryption at rest enabled"
+    category: encryption
+    ruleIds: ["ENC-002"]
+    
+  - id: "3.1"
+    name: "Ensure CloudTrail is enabled in all regions"
+    requirement: "CloudTrail must be enabled in all AWS regions"
+    category: logging
+    ruleIds: ["LOG-001"]
+    
+  - id: "3.2"
+    name: "Ensure CloudTrail log file validation is enabled"
+    requirement: "CloudTrail log file validation must be enabled"
+    category: logging
+    ruleIds: ["LOG-001"]
+    
+  - id: "3.3"
+    name: "Ensure the S3 bucket used to store CloudTrail logs is not publicly accessible"
+    requirement: "CloudTrail S3 bucket must not be publicly accessible"
+    category: logging
+    ruleIds: ["LOG-001"]
+    
+  - id: "3.4"
+    name: "Ensure CloudTrail trails are integrated with CloudWatch Logs"
+    requirement: "CloudTrail must send logs to CloudWatch Logs"
+    category: logging
+    ruleIds: ["LOG-001"]
+    
+  - id: "3.5"
+    name: "Ensure AWS Config is enabled in all regions"
+    requirement: "AWS Config must be enabled in all regions"
+    category: logging
+    ruleIds: ["LOG-002"]
+    
+  - id: "3.6"
+    name: "Ensure S3 bucket access logging is enabled on the CloudTrail S3 bucket"
+    requirement: "CloudTrail S3 bucket must have access logging enabled"
+    category: logging
+    ruleIds: []
+    
+  - id: "3.7"
+    name: "Ensure CloudTrail logs are encrypted at rest using KMS CMKs"
+    requirement: "CloudTrail logs must be encrypted with KMS"
+    category: logging
+    ruleIds: ["LOG-001"]
+    
+  - id: "3.8"
+    name: "Ensure rotation for customer created CMKs is enabled"
+    requirement: "Customer-managed KMS keys must have rotation enabled"
+    category: encryption
+    ruleIds: ["ENC-003"]
+    
+  - id: "3.9"
+    name: "Ensure VPC flow logging is enabled in all VPCs"
+    requirement: "VPC Flow Logs must be enabled for all VPCs"
+    category: logging
+    ruleIds: ["NET-003"]
+    
+  - id: "3.10"
+    name: "Ensure that Object-level logging for write events is enabled for S3 bucket"
+    requirement: "S3 buckets must have object-level write logging enabled"
+    category: logging
+    ruleIds: []
+    
+  - id: "3.11"
+    name: "Ensure that Object-level logging for read events is enabled for S3 bucket"
+    requirement: "S3 buckets must have object-level read logging enabled"
+    category: logging
+    ruleIds: []
+    
+  - id: "4.1"
+    name: "Ensure no security groups allow ingress from 0.0.0.0/0 to port 22"
+    requirement: "Security groups must not allow SSH from anywhere"
+    category: network
+    ruleIds: ["NET-001", "NET-002"]
+    
+  - id: "4.2"
+    name: "Ensure no security groups allow ingress from 0.0.0.0/0 to port 3389"
+    requirement: "Security groups must not allow RDP from anywhere"
+    category: network
+    ruleIds: ["NET-001", "NET-002"]
+    
+  - id: "4.3"
+    name: "Ensure the default security group of every VPC restricts all traffic"
+    requirement: "Default security groups must restrict all traffic"
+    category: network
+    ruleIds: ["NET-001"]
+    
+  - id: "4.4"
+    name: "Ensure routing tables for VPC peering are least access"
+    requirement: "VPC peering routing tables must follow least privilege"
+    category: network
+    ruleIds: []
+    
+  - id: "5.1"
+    name: "Ensure no Network ACLs allow ingress from 0.0.0.0/0 to port 22"
+    requirement: "Network ACLs must not allow SSH from anywhere"
+    category: network
+    ruleIds: []
+    
+  - id: "5.2"
+    name: "Ensure no Network ACLs allow ingress from 0.0.0.0/0 to port 3389"
+    requirement: "Network ACLs must not allow RDP from anywhere"
+    category: network
+    ruleIds: []
+    
+  - id: "5.3"
+    name: "Ensure the default security group of every VPC restricts all traffic"
+    requirement: "Default VPC security groups must deny all traffic"
+    category: network
+    ruleIds: ["NET-001"]
+    
+  - id: "5.4"
+    name: "Ensure routing tables for VPC peering are least access"
+    requirement: "VPC peering routes must be least privilege"
+    category: network
+    ruleIds: []

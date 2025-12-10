@@ -1,0 +1,359 @@
+name: AWS Well-Architected Framework - Security Pillar
+version: "2023"
+framework: aws_well_architected
+description: AWS Well-Architected Framework Security Pillar best practices
+
+controls:
+  - id: "SEC01-BP01"
+    name: "Separate workloads using accounts"
+    requirement: "Use separate AWS accounts to isolate workloads"
+    category: iam
+    ruleIds: []
+    
+  - id: "SEC01-BP02"
+    name: "Secure account root user and properties"
+    requirement: "Root user must be secured with MFA and not used for daily tasks"
+    category: iam
+    ruleIds: ["IAM-002", "IAM-005"]
+    
+  - id: "SEC01-BP03"
+    name: "Identify and validate control objectives"
+    requirement: "Define and validate security control objectives"
+    category: iam
+    ruleIds: []
+    
+  - id: "SEC01-BP04"
+    name: "Stay up to date with security threats and recommendations"
+    requirement: "Monitor security threats and apply recommendations"
+    category: iam
+    ruleIds: []
+    
+  - id: "SEC01-BP05"
+    name: "Reduce security management scope"
+    requirement: "Minimize security management surface area"
+    category: iam
+    ruleIds: []
+    
+  - id: "SEC01-BP06"
+    name: "Automate deployment of standard security controls"
+    requirement: "Use automation to deploy security controls consistently"
+    category: iam
+    ruleIds: []
+    
+  - id: "SEC01-BP07"
+    name: "Identify threats and prioritize mitigations using a threat model"
+    requirement: "Use threat modeling to identify and prioritize risks"
+    category: iam
+    ruleIds: []
+    
+  - id: "SEC01-BP08"
+    name: "Evaluate and implement new security services and features"
+    requirement: "Continuously evaluate new AWS security services"
+    category: iam
+    ruleIds: []
+    
+  - id: "SEC02-BP01"
+    name: "Use strong sign-in mechanisms"
+    requirement: "Implement strong authentication mechanisms"
+    category: iam
+    ruleIds: ["IAM-002"]
+    
+  - id: "SEC02-BP02"
+    name: "Use temporary credentials"
+    requirement: "Use temporary credentials instead of long-term credentials"
+    category: iam
+    ruleIds: ["IAM-004"]
+    
+  - id: "SEC02-BP03"
+    name: "Store and use secrets securely"
+    requirement: "Secrets must be stored securely using AWS Secrets Manager or Parameter Store"
+    category: iam
+    ruleIds: []
+    
+  - id: "SEC02-BP04"
+    name: "Rely on a centralized identity provider"
+    requirement: "Use centralized identity provider for authentication"
+    category: iam
+    ruleIds: []
+    
+  - id: "SEC02-BP05"
+    name: "Audit and rotate credentials periodically"
+    requirement: "Credentials must be audited and rotated regularly"
+    category: iam
+    ruleIds: ["IAM-004"]
+    
+  - id: "SEC02-BP06"
+    name: "Leverage user groups and attributes"
+    requirement: "Use groups and attributes for access management"
+    category: iam
+    ruleIds: []
+    
+  - id: "SEC03-BP01"
+    name: "Define access requirements"
+    requirement: "Clearly define access requirements for resources"
+    category: iam
+    ruleIds: []
+    
+  - id: "SEC03-BP02"
+    name: "Grant least privilege access"
+    requirement: "Grant only the minimum permissions required"
+    category: iam
+    ruleIds: ["IAM-001", "IAM-003"]
+    
+  - id: "SEC03-BP03"
+    name: "Establish emergency access process"
+    requirement: "Define process for emergency access scenarios"
+    category: iam
+    ruleIds: []
+    
+  - id: "SEC03-BP04"
+    name: "Reduce permissions continuously"
+    requirement: "Continuously review and reduce permissions"
+    category: iam
+    ruleIds: ["IAM-001", "IAM-003"]
+    
+  - id: "SEC03-BP05"
+    name: "Define permission guardrails for your organization"
+    requirement: "Use SCPs to define organization-wide permission boundaries"
+    category: iam
+    ruleIds: []
+    
+  - id: "SEC03-BP06"
+    name: "Manage access based on lifecycle"
+    requirement: "Adjust access based on user lifecycle changes"
+    category: iam
+    ruleIds: []
+    
+  - id: "SEC03-BP07"
+    name: "Analyze public and cross-account access"
+    requirement: "Regularly analyze public and cross-account access"
+    category: iam
+    ruleIds: ["IAM-003"]
+    
+  - id: "SEC03-BP08"
+    name: "Share resources securely within your organization"
+    requirement: "Use AWS RAM to share resources securely"
+    category: iam
+    ruleIds: []
+    
+  - id: "SEC03-BP09"
+    name: "Share resources securely with a third party"
+    requirement: "Implement secure third-party resource sharing"
+    category: iam
+    ruleIds: ["IAM-003"]
+    
+  - id: "SEC04-BP01"
+    name: "Configure service and application logging"
+    requirement: "Enable logging for all services and applications"
+    category: logging
+    ruleIds: ["LOG-001", "LOG-002"]
+    
+  - id: "SEC04-BP02"
+    name: "Analyze logs centrally"
+    requirement: "Centralize log analysis and monitoring"
+    category: logging
+    ruleIds: ["LOG-001"]
+    
+  - id: "SEC04-BP03"
+    name: "Automate response to events"
+    requirement: "Automate responses to security events"
+    category: logging
+    ruleIds: []
+    
+  - id: "SEC04-BP04"
+    name: "Implement actionable security events"
+    requirement: "Define and implement actionable security alerts"
+    category: logging
+    ruleIds: []
+    
+  - id: "SEC05-BP01"
+    name: "Create network layers"
+    requirement: "Implement network segmentation using VPCs and subnets"
+    category: network
+    ruleIds: []
+    
+  - id: "SEC05-BP02"
+    name: "Control traffic at all layers"
+    requirement: "Implement traffic controls at all network layers"
+    category: network
+    ruleIds: ["NET-001"]
+    
+  - id: "SEC05-BP03"
+    name: "Implement inspection and protection"
+    requirement: "Use inspection and protection services for network traffic"
+    category: network
+    ruleIds: []
+    
+  - id: "SEC05-BP04"
+    name: "Automate network protection"
+    requirement: "Automate network protection mechanisms"
+    category: network
+    ruleIds: []
+    
+  - id: "SEC06-BP01"
+    name: "Perform vulnerability management"
+    requirement: "Regularly scan for and remediate vulnerabilities"
+    category: compute
+    ruleIds: []
+    
+  - id: "SEC06-BP02"
+    name: "Provision compute from hardened images"
+    requirement: "Use hardened AMIs for compute resources"
+    category: compute
+    ruleIds: []
+    
+  - id: "SEC06-BP03"
+    name: "Reduce attack surface"
+    requirement: "Minimize compute attack surface"
+    category: compute
+    ruleIds: []
+    
+  - id: "SEC06-BP04"
+    name: "Implement managed services"
+    requirement: "Use managed services to reduce operational burden"
+    category: compute
+    ruleIds: []
+    
+  - id: "SEC07-BP01"
+    name: "Enforce encryption at rest"
+    requirement: "All data at rest must be encrypted"
+    category: encryption
+    ruleIds: ["ENC-001", "ENC-002"]
+    
+  - id: "SEC07-BP02"
+    name: "Enforce encryption in transit"
+    requirement: "All data in transit must be encrypted"
+    category: encryption
+    ruleIds: ["ENC-004"]
+    
+  - id: "SEC07-BP03"
+    name: "Automate data at rest protection"
+    requirement: "Automate encryption of data at rest"
+    category: encryption
+    ruleIds: ["ENC-001", "ENC-002"]
+    
+  - id: "SEC07-BP04"
+    name: "Enforce access control"
+    requirement: "Implement strong access controls for data"
+    category: encryption
+    ruleIds: []
+    
+  - id: "SEC07-BP05"
+    name: "Use mechanisms to keep people away from data"
+    requirement: "Minimize direct human access to data"
+    category: encryption
+    ruleIds: []
+    
+  - id: "SEC08-BP01"
+    name: "Identify and classify data"
+    requirement: "Classify data based on sensitivity"
+    category: storage
+    ruleIds: []
+    
+  - id: "SEC08-BP02"
+    name: "Define data lifecycle management"
+    requirement: "Implement data lifecycle policies"
+    category: storage
+    ruleIds: []
+    
+  - id: "SEC08-BP03"
+    name: "Automate identification and classification"
+    requirement: "Automate data identification and classification"
+    category: storage
+    ruleIds: []
+    
+  - id: "SEC08-BP04"
+    name: "Define data retention requirements"
+    requirement: "Define and implement data retention policies"
+    category: storage
+    ruleIds: []
+    
+  - id: "SEC09-BP01"
+    name: "Implement secure key management"
+    requirement: "Use AWS KMS for key management"
+    category: encryption
+    ruleIds: ["ENC-003"]
+    
+  - id: "SEC09-BP02"
+    name: "Enforce encryption at rest"
+    requirement: "Encrypt all data at rest using KMS"
+    category: encryption
+    ruleIds: ["ENC-001", "ENC-002"]
+    
+  - id: "SEC09-BP03"
+    name: "Enforce encryption in transit"
+    requirement: "Use TLS for all data in transit"
+    category: encryption
+    ruleIds: ["ENC-004"]
+    
+  - id: "SEC09-BP04"
+    name: "Detect and investigate security events"
+    requirement: "Implement detection and investigation capabilities"
+    category: logging
+    ruleIds: ["LOG-001", "LOG-002"]
+    
+  - id: "SEC10-BP01"
+    name: "Deploy security services and software"
+    requirement: "Deploy GuardDuty, Security Hub, and other security services"
+    category: logging
+    ruleIds: []
+    
+  - id: "SEC10-BP02"
+    name: "Automate testing and validation"
+    requirement: "Automate security testing and validation"
+    category: iam
+    ruleIds: []
+    
+  - id: "SEC10-BP03"
+    name: "Deploy security services at scale"
+    requirement: "Use automation to deploy security services across accounts"
+    category: iam
+    ruleIds: []
+    
+  - id: "SEC10-BP04"
+    name: "Implement new security services and features"
+    requirement: "Continuously adopt new security capabilities"
+    category: iam
+    ruleIds: []
+    
+  - id: "SEC11-BP01"
+    name: "Establish incident response plan"
+    requirement: "Define and document incident response procedures"
+    category: iam
+    ruleIds: []
+    
+  - id: "SEC11-BP02"
+    name: "Develop forensics capabilities"
+    requirement: "Implement forensics and investigation capabilities"
+    category: logging
+    ruleIds: ["LOG-001"]
+    
+  - id: "SEC11-BP03"
+    name: "Prepare tooling for incident response"
+    requirement: "Pre-deploy incident response tools and automation"
+    category: iam
+    ruleIds: []
+    
+  - id: "SEC11-BP04"
+    name: "Identify key personnel and external resources"
+    requirement: "Define incident response team and escalation paths"
+    category: iam
+    ruleIds: []
+    
+  - id: "SEC11-BP05"
+    name: "Identify and classify data"
+    requirement: "Classify data to prioritize incident response"
+    category: storage
+    ruleIds: []
+    
+  - id: "SEC11-BP06"
+    name: "Develop and test security incident response playbooks"
+    requirement: "Create and test incident response playbooks"
+    category: iam
+    ruleIds: []
+    
+  - id: "SEC11-BP07"
+    name: "Run game days"
+    requirement: "Conduct security game days and simulations"
+    category: iam
+    ruleIds: []

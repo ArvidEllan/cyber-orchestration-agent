@@ -284,6 +284,7 @@ This implementation plan breaks down the Infrastructure Security Review Agent in
 
 
 - [ ] 6.1 Create compliance framework definitions
+
   - Define CIS AWS Foundations Benchmark control mappings
   - Define AWS Well-Architected Security Pillar mappings
   - Define ISO 27001 control mappings
