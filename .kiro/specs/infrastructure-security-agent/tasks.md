@@ -229,7 +229,7 @@ This implementation plan breaks down the Infrastructure Security Review Agent in
   - Test rule execution engine with multiple rules
   - _Requirements: 1.4, 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [-] 5. Implement threat intelligence analyzer
+- [x] 5. Implement threat intelligence analyzer
 
 
 - [x] 5.1 Create log analysis module
@@ -243,7 +243,7 @@ This implementation plan breaks down the Infrastructure Security Review Agent in
 
 
 
-- [ ] 5.2 Implement GuardDuty and Security Hub integration
+- [x] 5.2 Implement GuardDuty and Security Hub integration
   - Create GuardDutyAnalyzer to fetch and parse GuardDuty findings
   - Create SecurityHubAnalyzer to aggregate Security Hub findings
   - Normalize findings to common Finding interface
@@ -251,7 +251,7 @@ This implementation plan breaks down the Infrastructure Security Review Agent in
 
   - _Requirements: 8.3, 8.4_
 
-- [ ] 5.3 Implement event correlation engine
+- [x] 5.3 Implement event correlation engine
   - Create EventCorrelator to identify related security events
   - Implement time-window based correlation
   - Detect privilege escalation + access key creation patterns
@@ -261,8 +261,10 @@ This implementation plan breaks down the Infrastructure Security Review Agent in
   - Generate CorrelatedThreat objects with attack timelines
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5_
 
-- [ ] 5.4 Implement vulnerability checking
+- [x] 5.4 Implement vulnerability checking
   - Create VulnerabilityChecker to identify EOL Lambda runtimes
+
+
 
   - Implement CVE database integration (NVD API)
   - Check EC2 AMIs against known vulnerabilities
@@ -270,13 +272,17 @@ This implementation plan breaks down the Infrastructure Security Review Agent in
   - Enrich findings with threat intelligence
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
 
-- [ ] 5.5 Write threat analyzer tests
+- [x] 5.5 Write threat analyzer tests
   - Create mock CloudTrail and VPC Flow Log data
   - Write unit tests for event correlation logic
   - Test vulnerability checking with known CVEs
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 9.1, 9.2, 9.3, 9.4, 9.5_
 
-- [ ] 6. Implement compliance mapper
+- [-] 6. Implement compliance mapper
+
+
+
+
 - [ ] 6.1 Create compliance framework definitions
   - Define CIS AWS Foundations Benchmark control mappings
   - Define AWS Well-Architected Security Pillar mappings
