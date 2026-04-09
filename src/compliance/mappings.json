@@ -1,0 +1,269 @@
+{
+  "S3_PUBLIC_ACL": {
+    "title": "S3 bucket allows public ACL",
+    "frameworks": [
+      { "framework": "CIS_AWS", "controlId": "2.1.5", "controlTitle": "Ensure S3 Buckets are configured with Block public access" },
+      { "framework": "NIST_800_53", "controlId": "AC-3", "controlTitle": "Access Enforcement" },
+      { "framework": "PCI_DSS", "controlId": "7.1", "controlTitle": "Limit access to system components and cardholder data" },
+      { "framework": "SOC2", "controlId": "CC6.1", "controlTitle": "Logical and Physical Access Controls" }
+    ],
+    "mitre": {
+      "techniqueId": "T1530",
+      "techniqueName": "Data from Cloud Storage",
+      "tactic": "Collection",
+      "url": "https://attack.mitre.org/techniques/T1530"
+    }
+  },
+  "S3_NO_ENCRYPTION": {
+    "title": "S3 bucket missing server-side encryption",
+    "frameworks": [
+      { "framework": "CIS_AWS", "controlId": "2.1.1", "controlTitle": "Ensure all S3 buckets employ encryption-at-rest" },
+      { "framework": "NIST_800_53", "controlId": "SC-28", "controlTitle": "Protection of Information at Rest" },
+      { "framework": "PCI_DSS", "controlId": "3.4", "controlTitle": "Render PAN unreadable anywhere it is stored" },
+      { "framework": "ISO_27001", "controlId": "A.10.1.1", "controlTitle": "Policy on the use of cryptographic controls" }
+    ],
+    "mitre": {
+      "techniqueId": "T1530",
+      "techniqueName": "Data from Cloud Storage",
+      "tactic": "Collection",
+      "url": "https://attack.mitre.org/techniques/T1530"
+    }
+  },
+  "S3_NO_VERSIONING": {
+    "title": "S3 bucket versioning not enabled",
+    "frameworks": [
+      { "framework": "CIS_AWS", "controlId": "2.1.3", "controlTitle": "Ensure MFA Delete is enabled on S3 buckets" },
+      { "framework": "NIST_800_53", "controlId": "CP-9", "controlTitle": "Information System Backup" },
+      { "framework": "ISO_27001", "controlId": "A.12.3.1", "controlTitle": "Information backup" }
+    ],
+    "mitre": {
+      "techniqueId": "T1485",
+      "techniqueName": "Data Destruction",
+      "tactic": "Impact",
+      "url": "https://attack.mitre.org/techniques/T1485"
+    }
+  },
+  "IAM_WILDCARD_ACTION": {
+    "title": "IAM policy contains wildcard actions",
+    "frameworks": [
+      { "framework": "CIS_AWS", "controlId": "1.16", "controlTitle": "Ensure IAM policies that allow full administrative privileges are not attached" },
+      { "framework": "NIST_800_53", "controlId": "AC-6", "controlTitle": "Least Privilege" },
+      { "framework": "PCI_DSS", "controlId": "7.1.2", "controlTitle": "Restrict access to privileged user IDs to least privileges necessary" },
+      { "framework": "SOC2", "controlId": "CC6.3", "controlTitle": "Role-Based Access Controls" }
+    ],
+    "mitre": {
+      "techniqueId": "T1078",
+      "techniqueName": "Valid Accounts",
+      "tactic": "Privilege Escalation",
+      "url": "https://attack.mitre.org/techniques/T1078"
+    }
+  },
+  "IAM_NO_MFA_ROOT": {
+    "title": "Root account MFA not enabled",
+    "frameworks": [
+      { "framework": "CIS_AWS", "controlId": "1.5", "controlTitle": "Ensure MFA is enabled for the root user account" },
+      { "framework": "NIST_800_53", "controlId": "IA-2(1)", "controlTitle": "Multi-Factor Authentication to Privileged Accounts" },
+      { "framework": "PCI_DSS", "controlId": "8.3", "controlTitle": "Secure all individual non-console administrative access with MFA" },
+      { "framework": "SOC2", "controlId": "CC6.1", "controlTitle": "Logical and Physical Access Controls" }
+    ],
+    "mitre": {
+      "techniqueId": "T1078.004",
+      "techniqueName": "Valid Accounts: Cloud Accounts",
+      "tactic": "Initial Access",
+      "url": "https://attack.mitre.org/techniques/T1078/004"
+    }
+  },
+  "IAM_UNUSED_KEY_90D": {
+    "title": "IAM access key unused for 90+ days",
+    "frameworks": [
+      { "framework": "CIS_AWS", "controlId": "1.12", "controlTitle": "Ensure credentials unused for 45 days or greater are disabled" },
+      { "framework": "CIS_AWS", "controlId": "1.14", "controlTitle": "Ensure access keys are rotated every 90 days or less" },
+      { "framework": "NIST_800_53", "controlId": "AC-2", "controlTitle": "Account Management" },
+      { "framework": "PCI_DSS", "controlId": "8.1.4", "controlTitle": "Remove/disable inactive user accounts within 90 days" }
+    ],
+    "mitre": {
+      "techniqueId": "T1528",
+      "techniqueName": "Steal Application Access Token",
+      "tactic": "Credential Access",
+      "url": "https://attack.mitre.org/techniques/T1528"
+    }
+  },
+  "IAM_INLINE_POLICY": {
+    "title": "IAM entity uses inline policy instead of managed policy",
+    "frameworks": [
+      { "framework": "CIS_AWS", "controlId": "1.15", "controlTitle": "Ensure IAM Users Receive Permissions Only Through Groups" },
+      { "framework": "NIST_800_53", "controlId": "AC-2", "controlTitle": "Account Management" },
+      { "framework": "ISO_27001", "controlId": "A.9.2.3", "controlTitle": "Management of privileged access rights" }
+    ],
+    "mitre": {
+      "techniqueId": "T1098",
+      "techniqueName": "Account Manipulation",
+      "tactic": "Persistence",
+      "url": "https://attack.mitre.org/techniques/T1098"
+    }
+  },
+  "EC2_SG_OPEN_SSH": {
+    "title": "Security group allows SSH from 0.0.0.0/0",
+    "frameworks": [
+      { "framework": "CIS_AWS", "controlId": "4.1", "controlTitle": "Ensure no security groups allow ingress from 0.0.0.0/0 to port 22" },
+      { "framework": "NIST_800_53", "controlId": "SC-7", "controlTitle": "Boundary Protection" },
+      { "framework": "PCI_DSS", "controlId": "1.2.1", "controlTitle": "Restrict inbound and outbound traffic" },
+      { "framework": "SOC2", "controlId": "CC6.6", "controlTitle": "Logical Access Security Measures" }
+    ],
+    "mitre": {
+      "techniqueId": "T1021.004",
+      "techniqueName": "Remote Services: SSH",
+      "tactic": "Lateral Movement",
+      "url": "https://attack.mitre.org/techniques/T1021/004"
+    }
+  },
+  "EC2_SG_OPEN_RDP": {
+    "title": "Security group allows RDP from 0.0.0.0/0",
+    "frameworks": [
+      { "framework": "CIS_AWS", "controlId": "4.2", "controlTitle": "Ensure no security groups allow ingress from 0.0.0.0/0 to port 3389" },
+      { "framework": "NIST_800_53", "controlId": "SC-7", "controlTitle": "Boundary Protection" },
+      { "framework": "PCI_DSS", "controlId": "1.2.1", "controlTitle": "Restrict inbound and outbound traffic" },
+      { "framework": "SOC2", "controlId": "CC6.6", "controlTitle": "Logical Access Security Measures" }
+    ],
+    "mitre": {
+      "techniqueId": "T1021.001",
+      "techniqueName": "Remote Services: Remote Desktop Protocol",
+      "tactic": "Lateral Movement",
+      "url": "https://attack.mitre.org/techniques/T1021/001"
+    }
+  },
+  "EC2_UNENCRYPTED_EBS": {
+    "title": "EBS volume not encrypted",
+    "frameworks": [
+      { "framework": "CIS_AWS", "controlId": "2.2.1", "controlTitle": "Ensure EBS volume encryption is enabled" },
+      { "framework": "NIST_800_53", "controlId": "SC-28", "controlTitle": "Protection of Information at Rest" },
+      { "framework": "PCI_DSS", "controlId": "3.4", "controlTitle": "Render PAN unreadable anywhere it is stored" },
+      { "framework": "ISO_27001", "controlId": "A.10.1.1", "controlTitle": "Policy on the use of cryptographic controls" }
+    ],
+    "mitre": {
+      "techniqueId": "T1530",
+      "techniqueName": "Data from Cloud Storage",
+      "tactic": "Collection",
+      "url": "https://attack.mitre.org/techniques/T1530"
+    }
+  },
+  "EKS_PUBLIC_ENDPOINT": {
+    "title": "EKS cluster API endpoint publicly accessible",
+    "frameworks": [
+      { "framework": "CIS_AWS", "controlId": "5.4.1", "controlTitle": "Restrict Access to the Control Plane Endpoint" },
+      { "framework": "NIST_800_53", "controlId": "SC-7", "controlTitle": "Boundary Protection" },
+      { "framework": "PCI_DSS", "controlId": "1.3.1", "controlTitle": "Implement a DMZ to limit inbound traffic" },
+      { "framework": "SOC2", "controlId": "CC6.6", "controlTitle": "Logical Access Security Measures" }
+    ],
+    "mitre": {
+      "techniqueId": "T1133",
+      "techniqueName": "External Remote Services",
+      "tactic": "Initial Access",
+      "url": "https://attack.mitre.org/techniques/T1133"
+    }
+  },
+  "EKS_NO_AUDIT_LOG": {
+    "title": "EKS cluster audit logging not enabled",
+    "frameworks": [
+      { "framework": "CIS_AWS", "controlId": "5.3.1", "controlTitle": "Ensure Kubernetes Secrets are encrypted using CMKs" },
+      { "framework": "NIST_800_53", "controlId": "AU-2", "controlTitle": "Audit Events" },
+      { "framework": "PCI_DSS", "controlId": "10.1", "controlTitle": "Implement audit trails to link all access to individual users" },
+      { "framework": "SOC2", "controlId": "CC7.2", "controlTitle": "System Monitoring" }
+    ],
+    "mitre": {
+      "techniqueId": "T1562.008",
+      "techniqueName": "Impair Defenses: Disable Cloud Logs",
+      "tactic": "Defense Evasion",
+      "url": "https://attack.mitre.org/techniques/T1562/008"
+    }
+  },
+  "CLOUDTRAIL_NOT_ENABLED": {
+    "title": "CloudTrail logging not enabled",
+    "frameworks": [
+      { "framework": "CIS_AWS", "controlId": "3.1", "controlTitle": "Ensure CloudTrail is enabled in all regions" },
+      { "framework": "NIST_800_53", "controlId": "AU-2", "controlTitle": "Audit Events" },
+      { "framework": "PCI_DSS", "controlId": "10.1", "controlTitle": "Implement audit trails" },
+      { "framework": "ISO_27001", "controlId": "A.12.4.1", "controlTitle": "Event logging" }
+    ],
+    "mitre": {
+      "techniqueId": "T1562.008",
+      "techniqueName": "Impair Defenses: Disable Cloud Logs",
+      "tactic": "Defense Evasion",
+      "url": "https://attack.mitre.org/techniques/T1562/008"
+    }
+  },
+  "CLOUDTRAIL_NOT_ENCRYPTED": {
+    "title": "CloudTrail logs not encrypted with KMS",
+    "frameworks": [
+      { "framework": "CIS_AWS", "controlId": "3.7", "controlTitle": "Ensure CloudTrail logs are encrypted at rest using KMS CMKs" },
+      { "framework": "NIST_800_53", "controlId": "SC-28", "controlTitle": "Protection of Information at Rest" },
+      { "framework": "PCI_DSS", "controlId": "3.4", "controlTitle": "Render PAN unreadable anywhere it is stored" },
+      { "framework": "ISO_27001", "controlId": "A.10.1.1", "controlTitle": "Policy on the use of cryptographic controls" }
+    ],
+    "mitre": {
+      "techniqueId": "T1530",
+      "techniqueName": "Data from Cloud Storage",
+      "tactic": "Collection",
+      "url": "https://attack.mitre.org/techniques/T1530"
+    }
+  },
+  "RDS_PUBLICLY_ACCESSIBLE": {
+    "title": "RDS instance publicly accessible",
+    "frameworks": [
+      { "framework": "CIS_AWS", "controlId": "4.3", "controlTitle": "Ensure the default security group of every VPC restricts all traffic" },
+      { "framework": "NIST_800_53", "controlId": "SC-7", "controlTitle": "Boundary Protection" },
+      { "framework": "PCI_DSS", "controlId": "1.3.1", "controlTitle": "Implement a DMZ to limit inbound traffic" },
+      { "framework": "SOC2", "controlId": "CC6.6", "controlTitle": "Logical Access Security Measures" }
+    ],
+    "mitre": {
+      "techniqueId": "T1190",
+      "techniqueName": "Exploit Public-Facing Application",
+      "tactic": "Initial Access",
+      "url": "https://attack.mitre.org/techniques/T1190"
+    }
+  },
+  "RDS_NO_ENCRYPTION": {
+    "title": "RDS instance storage not encrypted",
+    "frameworks": [
+      { "framework": "CIS_AWS", "controlId": "2.3.1", "controlTitle": "Ensure that encryption is enabled for RDS Instances" },
+      { "framework": "NIST_800_53", "controlId": "SC-28", "controlTitle": "Protection of Information at Rest" },
+      { "framework": "PCI_DSS", "controlId": "3.4", "controlTitle": "Render PAN unreadable anywhere it is stored" },
+      { "framework": "ISO_27001", "controlId": "A.10.1.1", "controlTitle": "Policy on the use of cryptographic controls" }
+    ],
+    "mitre": {
+      "techniqueId": "T1530",
+      "techniqueName": "Data from Cloud Storage",
+      "tactic": "Collection",
+      "url": "https://attack.mitre.org/techniques/T1530"
+    }
+  },
+  "LAMBDA_PUBLIC_POLICY": {
+    "title": "Lambda function has public resource-based policy",
+    "frameworks": [
+      { "framework": "NIST_800_53", "controlId": "AC-3", "controlTitle": "Access Enforcement" },
+      { "framework": "PCI_DSS", "controlId": "7.1", "controlTitle": "Limit access to system components" },
+      { "framework": "SOC2", "controlId": "CC6.1", "controlTitle": "Logical and Physical Access Controls" }
+    ],
+    "mitre": {
+      "techniqueId": "T1078.004",
+      "techniqueName": "Valid Accounts: Cloud Accounts",
+      "tactic": "Initial Access",
+      "url": "https://attack.mitre.org/techniques/T1078/004"
+    }
+  },
+  "KMS_KEY_ROTATION_DISABLED": {
+    "title": "KMS key automatic rotation not enabled",
+    "frameworks": [
+      { "framework": "CIS_AWS", "controlId": "3.8", "controlTitle": "Ensure rotation for customer created CMKs is enabled" },
+      { "framework": "NIST_800_53", "controlId": "SC-12", "controlTitle": "Cryptographic Key Establishment and Management" },
+      { "framework": "PCI_DSS", "controlId": "3.6.4", "controlTitle": "Cryptographic key changes for keys that have reached the end of their cryptoperiod" },
+      { "framework": "ISO_27001", "controlId": "A.10.1.2", "controlTitle": "Key management" }
+    ],
+    "mitre": {
+      "techniqueId": "T1552.004",
+      "techniqueName": "Unsecured Credentials: Private Keys",
+      "tactic": "Credential Access",
+      "url": "https://attack.mitre.org/techniques/T1552/004"
+    }
+  }
+}

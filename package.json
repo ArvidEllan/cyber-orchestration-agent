@@ -1,21 +1,24 @@
 {
   "name": "@security/infra-agent",
   "version": "1.0.0",
-  "description": "Infrastructure Security Review Agent for AWS cloud infrastructure",
+  "description": "CLI security tool for IaC static analysis, live AWS auditing, and AI-driven remediation with compliance mapping",
   "main": "dist/index.js",
   "bin": {
-    "infra-agent": "dist/cli.js"
+    "infra-agent": "dist/cli/index.js"
   },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "start": "node dist/cli/index.js",
     "test": "vitest --run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\""
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "security",
@@ -24,22 +27,30 @@
     "iac",
     "compliance",
     "terraform",
-    "cloudformation"
+    "cloudformation",
+    "cdk",
+    "devsecops",
+    "claude-ai",
+    "siem"
   ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.0.0",
+    "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
+    "@vitest/coverage-v8": "^4.0.8",
     "@vitest/ui": "^4.0.8",
+    "aws-sdk-client-mock": "^4.0.0",
     "eslint": "^8.0.0",
     "prettier": "^3.0.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.8"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
     "@aws-sdk/client-api-gateway": "^3.930.0",
     "@aws-sdk/client-cloudtrail": "^3.930.0",
     "@aws-sdk/client-cloudwatch-logs": "^3.948.0",
@@ -48,6 +59,7 @@
     "@aws-sdk/client-eks": "^3.930.0",
     "@aws-sdk/client-guardduty": "^3.948.0",
     "@aws-sdk/client-iam": "^3.930.0",
+    "@aws-sdk/client-kms": "^3.930.0",
     "@aws-sdk/client-lambda": "^3.930.0",
     "@aws-sdk/client-organizations": "^3.930.0",
     "@aws-sdk/client-rds": "^3.930.0",
@@ -56,8 +68,14 @@
     "@aws-sdk/client-sts": "^3.930.0",
     "@aws-sdk/credential-providers": "^3.930.0",
     "@cdktf/hcl2json": "^0.21.0",
+    "chalk": "^4.1.2",
+    "commander": "^12.0.0",
+    "dotenv": "^16.4.0",
     "hcl2-parser": "^1.0.3",
     "js-yaml": "^4.1.1",
+    "ora": "^5.4.1",
+    "pdfkit": "^0.15.0",
+    "uuid": "^11.0.0",
     "yaml": "^2.8.1"
   },
   "engines": {

@@ -3,6 +3,11 @@
  * Main entry point for the library
  */
 
+/**
+ * Infrastructure Security Review Agent
+ * Main entry point for the library
+ */
+
 export * from './types';
 export * from './parsers';
 export * from './auditors';
@@ -14,4 +19,4 @@ export * from './reports';
 export * from './notifications';
 export * from './database';
 export * from './ai';
-export * from './utils';
+// Note: utils is stubbed, will export when implemented

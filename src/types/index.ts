@@ -1020,3 +1020,10 @@ export interface ErrorHandler {
   retry<T>(operation: () => Promise<T>, maxRetries: number): Promise<T>;
   logError(error: SecurityAgentError): void;
 }
+
+// ============================================================================
+// New Core Types (Phase 0 spec-compliant types)
+// Re-export from core.ts for the canonical Finding interface
+// ============================================================================
+
+export * from './core';
