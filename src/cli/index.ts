@@ -9,8 +9,16 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
 import * as path from 'path';
+import * as fs from 'fs/promises';
 import { TerraformParser } from '../parsers/terraform-parser';
-import { Finding, Severity } from '../types/core';
+import { CloudFormationParser } from '../parsers/cloudformation-parser';
+import { CDKParser } from '../parsers/cdk-parser';
+import { IaCSecurityScanner } from '../parsers/iac-security-scanner';
+import { Finding, Severity, IaCProvider } from '../types/core';
+import { IaCFormat } from '../types';
+import { MarkdownReporter } from '../reports/markdown-reporter';
+import { JSONReporter } from '../reports/json-reporter';
+import { PDFReporter } from '../reports/pdf-reporter';
 
 const VERSION = '1.0.0';
 
@@ -31,8 +39,10 @@ program
   .requiredOption('--iac <path>', 'Path to IaC files or directory')
   .option('--provider <type>', 'IaC provider: terraform, cloudformation, cdk', 'terraform')
   .option('--severity <level>', 'Minimum severity to report: CRITICAL, HIGH, MEDIUM, LOW, INFO', 'LOW')
-  .option('--format <type>', 'Output format: text, json', 'text')
+  .option('--format <types>', 'Output formats (comma-separated): text, json, markdown, pdf', 'text')
+  .option('--output <basename>', 'Output file basename (for non-text formats)')
   .option('--fail-on <level>', 'Exit with code 1 if findings at or above this severity')
+  .option('--no-ai', 'Disable AI-powered remediation suggestions')
   .action(async (options) => {
     await runScan(options);
   });

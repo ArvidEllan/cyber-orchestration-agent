@@ -57,10 +57,10 @@ src/
 - [x] CDK parser with TypeScript AST analysis (already implemented)
 - [x] Shared IaCSecurityScanner for all parsed Resources
 
-### Phase 5 — Report Generation
-- [ ] Markdown reporter
-- [ ] JSON reporter
-- [ ] PDF reporter with pdfkit
+### Phase 5 — Report Generation (COMPLETE)
+- [x] Markdown reporter with severity grouping
+- [x] JSON reporter with structured output
+- [x] PDF reporter with pdfkit
 
 ### Phase 6 — CLI Polish
 - [ ] Commander.js commands: scan, audit, full
