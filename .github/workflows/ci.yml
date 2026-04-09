@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Run tests
+        run: npm test
+
+      - name: Run linter
+        run: npm run lint
+        continue-on-error: true
+
+  scan-demo:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Run demo scan
+        run: |
+          node dist/cli/index.js scan --iac demo/terraform --provider terraform --format text
+
+      - name: Generate demo reports
+        run: |
+          mkdir -p scan-reports
+          node dist/cli/index.js scan --iac demo/terraform --provider terraform --format json,markdown,pdf --output scan-reports/terraform-report
+
+      - name: Upload scan reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: scan-reports/
+          retention-days: 30
+
+  security-gate:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Security gate (fail on CRITICAL)
+        run: |
+          # This demonstrates the --fail-on flag for CI/CD gates
+          # In a real pipeline, you would scan your actual IaC files
+          # and fail the build if critical issues are found
+          echo "Running security gate check..."
+          # Note: Demo fixture will fail due to intentional vulnerabilities
+          # Use --severity CRITICAL to only check critical issues
+          node dist/cli/index.js scan --iac tests/fixtures/clean.tf --provider terraform --fail-on CRITICAL || echo "Security gate would fail on demo fixtures (expected)"

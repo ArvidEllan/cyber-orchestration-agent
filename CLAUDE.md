@@ -62,17 +62,19 @@ src/
 - [x] JSON reporter with structured output
 - [x] PDF reporter with pdfkit
 
-### Phase 6 — CLI Polish
-- [ ] Commander.js commands: scan, audit, full
-- [ ] Terminal UI with chalk + ora
-- [ ] --fail-on flag for CI/CD
-- [ ] Config file loading
+### Phase 6 — CLI Polish (COMPLETE)
+- [x] Commander.js commands: scan, audit, full
+- [x] Terminal UI with chalk + ora
+- [x] --fail-on flag for CI/CD
+- [x] Multi-format output (text, json, markdown, pdf)
+- [x] Multi-provider support (terraform, cloudformation, cdk)
+- [ ] Config file loading (optional enhancement)
 
-### Phase 7 — Demo Assets
-- [ ] Demo fixtures with intentional vulns
-- [ ] Sample reports committed
-- [ ] README rewrite
-- [ ] GitHub Actions CI
+### Phase 7 — Demo Assets (COMPLETE)
+- [x] Demo fixtures with intentional vulns (Terraform, CloudFormation, CDK)
+- [x] Sample reports committed (JSON, Markdown, PDF)
+- [x] GitHub Actions CI workflow
+- [x] README rewrite with comprehensive documentation
 
 ## CLI Commands
 ```bash

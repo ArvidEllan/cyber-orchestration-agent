@@ -573,15 +573,24 @@ export class TerraformParser implements IaCParser {
     let policyDoc: string | Record<string, unknown> | undefined = config.policy as string | Record<string, unknown> | undefined;
 
     if (typeof policyDoc === 'string') {
-      try {
-        policyDoc = JSON.parse(policyDoc);
-      } catch {
-        // Check raw block for wildcards if JSON parse fails
-        if (rawBlock.includes('"Action"') && rawBlock.includes('"*"')) {
+      // Handle HCL interpolation like ${jsonencode({...})}
+      // Check for wildcard action patterns in the string
+      const wildcardPatterns = [
+        /Action\s*=\s*"\*"/i,                    // Action = "*"
+        /Action\s*:\s*"\*"/i,                    // Action: "*" (JSON style)
+        /"Action"\s*:\s*"\*"/i,                  // "Action": "*"
+        /Action\s*=\s*\[\s*"\*"\s*\]/i,          // Action = ["*"]
+        /Action\s*=\s*\[\s*"\*"\s*,/i,           // Action = ["*", ...]
+        /Action\s*=\s*\[[^\]]*,\s*"\*"\s*\]/i,   // Action = [..., "*"]
+        /Action\s*=\s*\[[^\]]*,\s*"\*"\s*,/i,    // Action = [..., "*", ...]
+      ];
+
+      for (const pattern of wildcardPatterns) {
+        if (pattern.test(policyDoc)) {
           return this.createFinding(
             'IAM_WILDCARD_ACTION',
             'IAM policy contains wildcard actions',
-            `IAM policy "${resourceName}" appears to contain wildcard (*) actions. This violates the principle of least privilege.`,
+            `IAM policy "${resourceName}" grants Action: "*" which provides full access to all AWS services. Use specific actions instead.`,
             'CRITICAL',
             resourceType,
             resourceName,
@@ -589,6 +598,12 @@ export class TerraformParser implements IaCParser {
             filePath
           );
         }
+      }
+
+      // Try to parse as JSON (for pure JSON policy documents)
+      try {
+        policyDoc = JSON.parse(policyDoc);
+      } catch {
         return null;
       }
     }

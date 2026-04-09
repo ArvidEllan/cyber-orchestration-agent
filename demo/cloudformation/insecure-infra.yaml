@@ -1,0 +1,188 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Insecure Infrastructure Demo - CloudFormation
+  This template contains intentional security misconfigurations for demonstration purposes
+
+Resources:
+  # ============================================================================
+  # S3 Bucket - Public Access
+  # ============================================================================
+  PublicDataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: company-public-data-cf
+      AccessControl: PublicRead  # CRITICAL: Public read access
+      Tags:
+        - Key: Name
+          Value: Public Data Bucket
+        - Key: Environment
+          Value: Production
+
+  # S3 Bucket - Missing Encryption
+  LogsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: company-logs-cf
+      # HIGH: No BucketEncryption configured
+      # MEDIUM: No VersioningConfiguration
+      Tags:
+        - Key: Name
+          Value: Logs Bucket
+
+  # ============================================================================
+  # IAM Policy - Wildcard Permissions
+  # ============================================================================
+  AdminPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: admin-full-access-cf
+      Description: Full admin access policy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: '*'  # CRITICAL: Wildcard action
+            Resource: '*'
+
+  DeveloperRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: developer-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+
+  # ============================================================================
+  # Security Group - Open to Internet
+  # ============================================================================
+  WebServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Web server security group with open ports
+      VpcId: vpc-12345678
+      SecurityGroupIngress:
+        # CRITICAL: SSH open to the world
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+          Description: SSH access
+        # CRITICAL: RDP open to the world
+        - IpProtocol: tcp
+          FromPort: 3389
+          ToPort: 3389
+          CidrIp: 0.0.0.0/0
+          Description: RDP access
+        # HTTP is acceptable
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: HTTP
+      Tags:
+        - Key: Name
+          Value: Web Server SG
+
+  # ============================================================================
+  # RDS Database - Insecure Configuration
+  # ============================================================================
+  ProductionDatabase:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: production-db-cf
+      Engine: mysql
+      EngineVersion: '8.0'
+      DBInstanceClass: db.t3.medium
+      AllocatedStorage: 100
+      MasterUsername: admin
+      MasterUserPassword: changeme123
+      PubliclyAccessible: true    # CRITICAL: Database publicly accessible
+      StorageEncrypted: false     # HIGH: No encryption at rest
+      Tags:
+        - Key: Name
+          Value: Production Database
+        - Key: Environment
+          Value: Production
+
+  # ============================================================================
+  # EKS Cluster - Insecure Configuration
+  # ============================================================================
+  ProductionEKSCluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: production-cluster-cf
+      RoleArn: arn:aws:iam::123456789012:role/eks-cluster-role
+      ResourcesVpcConfig:
+        SubnetIds:
+          - subnet-1234
+          - subnet-5678
+        EndpointPublicAccess: true   # HIGH: Public endpoint enabled
+        EndpointPrivateAccess: false
+      # HIGH: No Logging configured (audit logs disabled)
+      Tags:
+        - Key: Name
+          Value: Production EKS
+
+  # ============================================================================
+  # CloudTrail - Disabled Logging
+  # ============================================================================
+  AuditTrail:
+    Type: AWS::CloudTrail::Trail
+    Properties:
+      TrailName: audit-trail-cf
+      S3BucketName: !Ref LogsBucket
+      EnableLogging: false          # CRITICAL: Logging disabled
+      IsMultiRegionTrail: false     # HIGH: Not multi-region
+      EnableLogFileValidation: false # HIGH: No log validation
+      Tags:
+        - Key: Name
+          Value: Audit Trail
+
+  # ============================================================================
+  # EBS Volume - Unencrypted
+  # ============================================================================
+  DataVolume:
+    Type: AWS::EC2::Volume
+    Properties:
+      AvailabilityZone: us-east-1a
+      Size: 100
+      Encrypted: false   # HIGH: Unencrypted volume
+      Tags:
+        - Key: Name
+          Value: Data Volume
+
+  # ============================================================================
+  # EC2 Instance - With Security Issues
+  # ============================================================================
+  WebServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0c55b159cbfafe1f0
+      InstanceType: t3.medium
+      SecurityGroupIds:
+        - !Ref WebServerSecurityGroup
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 50
+            Encrypted: false   # HIGH: Unencrypted root volume
+      Tags:
+        - Key: Name
+          Value: Web Server
+
+Outputs:
+  BucketName:
+    Description: Public data bucket name
+    Value: !Ref PublicDataBucket
+
+  DatabaseEndpoint:
+    Description: RDS endpoint (INSECURE - publicly accessible)
+    Value: !GetAtt ProductionDatabase.Endpoint.Address
+
+  EKSClusterEndpoint:
+    Description: EKS cluster endpoint
+    Value: !GetAtt ProductionEKSCluster.Endpoint

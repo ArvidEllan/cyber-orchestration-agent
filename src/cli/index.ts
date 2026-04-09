@@ -82,7 +82,9 @@ interface ScanOptions {
   provider: string;
   severity: string;
   format: string;
+  output?: string;
   failOn?: string;
+  ai: boolean;
 }
 
 async function runScan(options: ScanOptions): Promise<void> {
@@ -90,38 +92,117 @@ async function runScan(options: ScanOptions): Promise<void> {
 
   try {
     const iacPath = path.resolve(options.iac);
+    const provider = options.provider.toLowerCase() as IaCProvider;
 
-    if (options.provider !== 'terraform') {
-      spinner.fail(`Provider "${options.provider}" not yet implemented`);
-      console.log(chalk.yellow('Currently supported: terraform'));
+    // Select parser based on provider
+    let findings: Finding[] = [];
+    let fileCount = 0;
+    let resourceCount = 0;
+    const errors: Array<{ file: string; error: string }> = [];
+
+    if (provider === 'terraform') {
+      const parser = new TerraformParser();
+      const result = await parser.scanDirectory(iacPath);
+      findings = result.findings;
+      fileCount = result.fileCount;
+      resourceCount = result.resourceCount;
+      errors.push(...result.errors);
+    } else if (provider === 'cloudformation') {
+      const parser = new CloudFormationParser();
+      const scanner = new IaCSecurityScanner();
+      const files = await findIaCFiles(iacPath, ['*.yaml', '*.yml', '*.json']);
+      fileCount = files.length;
+
+      for (const file of files) {
+        try {
+          const parsed = await parser.parse(file, IaCFormat.CLOUDFORMATION);
+          const resources = parser.extractResources(parsed);
+          resourceCount += resources.length;
+
+          const scanResult = scanner.scanResources(resources, 'cloudformation');
+          findings.push(...scanResult.findings);
+        } catch (err) {
+          errors.push({ file, error: err instanceof Error ? err.message : String(err) });
+        }
+      }
+    } else if (provider === 'cdk') {
+      const parser = new CDKParser();
+      const scanner = new IaCSecurityScanner();
+      const files = await findIaCFiles(iacPath, ['*.ts', '*.js']);
+      fileCount = files.length;
+
+      for (const file of files) {
+        try {
+          const parsed = await parser.parse(file, IaCFormat.CDK);
+          const resources = parser.extractResources(parsed);
+          resourceCount += resources.length;
+
+          const scanResult = scanner.scanResources(resources, 'cdk');
+          findings.push(...scanResult.findings);
+        } catch (err) {
+          errors.push({ file, error: err instanceof Error ? err.message : String(err) });
+        }
+      }
+    } else {
+      spinner.fail(`Provider "${options.provider}" not supported`);
+      console.log(chalk.yellow('Supported providers: terraform, cloudformation, cdk'));
       process.exit(1);
     }
 
-    const parser = new TerraformParser();
-    const result = await parser.scanDirectory(iacPath);
-
-    spinner.succeed(`Scanned ${result.fileCount} files, ${result.resourceCount} resources`);
+    spinner.succeed(`Scanned ${fileCount} files, ${resourceCount} resources`);
 
     // Filter by severity
     const minSeverity = parseSeverity(options.severity);
-    const filteredFindings = result.findings.filter(
+    const filteredFindings = findings.filter(
       (f) => severityToNumber(f.severity) >= severityToNumber(minSeverity)
     );
 
-    // Handle errors
-    if (result.errors.length > 0) {
+    // Handle parsing errors
+    if (errors.length > 0) {
       console.log();
-      console.log(chalk.yellow(`Warnings: ${result.errors.length} file(s) could not be parsed`));
-      for (const err of result.errors) {
+      console.log(chalk.yellow(`Warnings: ${errors.length} file(s) could not be parsed`));
+      for (const err of errors) {
         console.log(chalk.gray(`  - ${err.file}: ${err.error}`));
       }
     }
 
-    // Output findings
-    if (options.format === 'json') {
-      console.log(JSON.stringify({ findings: filteredFindings, summary: getSummary(filteredFindings) }, null, 2));
-    } else {
-      printTextReport(filteredFindings);
+    // Parse output formats
+    const formats = options.format.split(',').map((f) => f.trim().toLowerCase());
+
+    // Generate output for each format
+    for (const fmt of formats) {
+      if (fmt === 'text') {
+        printTextReport(filteredFindings);
+      } else if (fmt === 'json') {
+        const reporter = new JSONReporter();
+        const json = reporter.generate(filteredFindings);
+        if (options.output) {
+          const outputPath = `${options.output}.json`;
+          await fs.writeFile(outputPath, json);
+          console.log(chalk.green(`JSON report written to ${outputPath}`));
+        } else {
+          console.log(json);
+        }
+      } else if (fmt === 'markdown') {
+        const reporter = new MarkdownReporter();
+        const md = reporter.generate(filteredFindings);
+        if (options.output) {
+          const outputPath = `${options.output}.md`;
+          await fs.writeFile(outputPath, md);
+          console.log(chalk.green(`Markdown report written to ${outputPath}`));
+        } else {
+          console.log(md);
+        }
+      } else if (fmt === 'pdf') {
+        if (!options.output) {
+          console.log(chalk.yellow('PDF format requires --output option'));
+          continue;
+        }
+        const reporter = new PDFReporter();
+        const outputPath = `${options.output}.pdf`;
+        await reporter.generate(filteredFindings, { outputPath });
+        console.log(chalk.green(`PDF report written to ${outputPath}`));
+      }
     }
 
     // Handle --fail-on
@@ -279,6 +360,45 @@ function severityToNumber(severity: Severity): number {
     default:
       return 0;
   }
+}
+
+/**
+ * Find IaC files matching given patterns in a directory
+ */
+async function findIaCFiles(dirPath: string, patterns: string[]): Promise<string[]> {
+  const files: string[] = [];
+  const stat = await fs.stat(dirPath);
+
+  if (stat.isFile()) {
+    // Single file provided
+    return [dirPath];
+  }
+
+  // Read directory recursively
+  async function walkDir(dir: string): Promise<void> {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        // Skip node_modules and hidden directories
+        if (!entry.name.startsWith('.') && entry.name !== 'node_modules') {
+          await walkDir(fullPath);
+        }
+      } else if (entry.isFile()) {
+        // Check if file matches any pattern
+        for (const pattern of patterns) {
+          const ext = pattern.replace('*', '');
+          if (entry.name.endsWith(ext)) {
+            files.push(fullPath);
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  await walkDir(dirPath);
+  return files;
 }
 
 // Run CLI

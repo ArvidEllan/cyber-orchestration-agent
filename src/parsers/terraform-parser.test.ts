@@ -131,24 +131,29 @@ describe('TerraformParser', () => {
         expect(result.errors).toHaveLength(0);
       });
 
-      it('should find exactly 5 vulnerabilities', () => {
-        // As documented in mixed.tf comments:
-        // 1. S3_PUBLIC_ACL (mixed_public bucket)
-        // 2. IAM_WILDCARD_ACTION (mixed_admin policy)
-        // 3. EC2_SG_OPEN_SSH (mixed_open_ssh)
-        // 4. RDS_PUBLICLY_ACCESSIBLE (mixed_public_db)
-        // 5. EC2_UNENCRYPTED_EBS (mixed_unencrypted)
-        expect(result.findings).toHaveLength(5);
+      it('should find exactly 7 vulnerabilities', () => {
+        // Expected findings from mixed.tf:
+        // 1. S3_PUBLIC_ACL (mixed_public bucket) - CRITICAL
+        // 2. S3_NO_ENCRYPTION (mixed_public bucket) - HIGH
+        // 3. S3_NO_VERSIONING (mixed_public bucket) - MEDIUM
+        // 4. IAM_WILDCARD_ACTION (mixed_admin policy) - CRITICAL
+        // 5. EC2_SG_OPEN_SSH (mixed_open_ssh) - CRITICAL
+        // 6. RDS_PUBLICLY_ACCESSIBLE (mixed_public_db) - CRITICAL
+        // 7. EC2_UNENCRYPTED_EBS (mixed_unencrypted) - HIGH
+        expect(result.findings).toHaveLength(7);
       });
 
       it('should have correct mix of severities', () => {
         const criticals = result.findings.filter(f => f.severity === 'CRITICAL');
         const highs = result.findings.filter(f => f.severity === 'HIGH');
+        const mediums = result.findings.filter(f => f.severity === 'MEDIUM');
 
-        // S3_PUBLIC_ACL, IAM_WILDCARD, SG_OPEN_SSH, RDS_PUBLIC = CRITICAL
-        // EBS_UNENCRYPTED = HIGH
+        // CRITICAL: S3_PUBLIC_ACL, IAM_WILDCARD, SG_OPEN_SSH, RDS_PUBLIC
+        // HIGH: S3_NO_ENCRYPTION, EBS_UNENCRYPTED
+        // MEDIUM: S3_NO_VERSIONING
         expect(criticals.length).toBe(4);
-        expect(highs.length).toBe(1);
+        expect(highs.length).toBe(2);
+        expect(mediums.length).toBe(1);
       });
     });
   });
@@ -368,7 +373,12 @@ describe('TerraformParser', () => {
 
     it('should include detectedAt timestamp', async () => {
       const before = new Date();
-      const tf = `resource "aws_ebs_volume" "test" { availability_zone = "us-east-1a"; size = 10 }`;
+      const tf = `
+        resource "aws_ebs_volume" "test" {
+          availability_zone = "us-east-1a"
+          size = 10
+        }
+      `;
       const result = await parseInlineHCL(parser, tf);
       const after = new Date();
 
