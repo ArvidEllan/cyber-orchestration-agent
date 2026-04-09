@@ -17,7 +17,6 @@ import {
   LogSource,
   LogType,
   ThreatFinding,
-  Finding,
   Severity,
   Category,
   FindingStatus,

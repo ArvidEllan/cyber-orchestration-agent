@@ -13,7 +13,7 @@ import {
   SecurityRulesEngine,
   Severity,
   FindingStatus,
-  ResourceSource,
+  ComplianceStatus,
 } from '../types';
 import { RuleEvaluator } from './rule-evaluator';
 import { RuleLoader } from './rule-loader';
@@ -203,7 +203,7 @@ export class RulesEngine implements SecurityRulesEngine {
         controlId: rule.id,
         controlName: rule.name,
         requirement: rule.description,
-        status: 'non_compliant' as const,
+        status: ComplianceStatus.NON_COMPLIANT,
       })),
       riskScore: this.calculateRiskScore(rule.severity),
       status: FindingStatus.OPEN,

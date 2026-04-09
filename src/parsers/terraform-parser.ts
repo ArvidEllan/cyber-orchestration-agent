@@ -1,102 +1,143 @@
+/**
+ * Terraform Parser with Security Rules
+ * Parses HCL files using @cdktf/hcl2json and runs security checks
+ */
+
 import * as fs from 'fs/promises';
+import * as path from 'path';
+import { parse as parseHCL } from '@cdktf/hcl2json';
+import { v4 as uuidv4 } from 'uuid';
+import {
+  Finding,
+  FindingResource,
+  FrameworkMapping,
+  MitreMapping,
+  Severity,
+  ComplianceMappings,
+  RuleMappingEntry,
+} from '../types/core';
 import {
   IaCParser,
   IaCFormat,
   ParsedInfrastructure,
   ValidationResult,
   Resource,
-  Variable,
-  Output,
-  Metadata,
   ResourceSource,
-  ValidationError,
-  ValidationWarning,
 } from '../types';
 
-interface HCLParsedOutput {
-  resource?: Record<string, Record<string, Record<string, any>>>;
-  variable?: Record<string, any>;
-  output?: Record<string, any>;
-  terraform?: Record<string, any>;
-  provider?: Record<string, any>;
+// Load compliance mappings
+import mappingsJson from '../compliance/mappings.json';
+const MAPPINGS: ComplianceMappings = mappingsJson as ComplianceMappings;
+
+/**
+ * Parsed HCL structure from @cdktf/hcl2json
+ */
+interface HCLParseResult {
+  resource?: Record<string, Record<string, Array<Record<string, unknown>>>>;
+  variable?: Record<string, unknown>;
+  output?: Record<string, unknown>;
+  data?: Record<string, Record<string, Array<Record<string, unknown>>>>;
+  terraform?: Record<string, unknown>;
+  provider?: Record<string, unknown>;
 }
 
 /**
- * Parser for Terraform (.tf) files
- * Handles HCL parsing, resource extraction, and normalization
+ * Internal resource representation during parsing
+ */
+interface ParsedResource {
+  type: string;
+  name: string;
+  config: Record<string, unknown>;
+  rawBlock: string;
+  filePath: string;
+  startLine?: number;
+}
+
+/**
+ * Result of scanning a Terraform directory
+ */
+export interface TerraformScanResult {
+  findings: Finding[];
+  resourceCount: number;
+  fileCount: number;
+  errors: Array<{ file: string; error: string }>;
+}
+
+/**
+ * Rule check function signature
+ */
+type RuleCheckFn = (
+  resourceType: string,
+  resourceName: string,
+  config: Record<string, unknown>,
+  rawBlock: string,
+  filePath: string
+) => Finding | null;
+
+/**
+ * Terraform Parser Class
+ * Implements IaCParser interface for compatibility with ParserFactory
  */
 export class TerraformParser implements IaCParser {
+  private ruleChecks: Map<string, RuleCheckFn> = new Map();
+
+  constructor() {
+    this.registerRules();
+  }
+
   /**
-   * Parse Terraform files and extract infrastructure configuration
+   * Register all security rule check functions
    */
-  async parse(filePath: string, format: IaCFormat): Promise<ParsedInfrastructure> {
-    if (format !== IaCFormat.TERRAFORM) {
-      throw new Error(`TerraformParser only supports TERRAFORM format, got ${format}`);
-    }
+  private registerRules(): void {
+    this.ruleChecks.set('S3_PUBLIC_ACL', this.checkS3PublicAcl.bind(this));
+    this.ruleChecks.set('S3_NO_ENCRYPTION', this.checkS3Encryption.bind(this));
+    this.ruleChecks.set('S3_NO_VERSIONING', this.checkS3Versioning.bind(this));
+    this.ruleChecks.set('IAM_WILDCARD_ACTION', this.checkIamWildcard.bind(this));
+    this.ruleChecks.set('EC2_SG_OPEN_SSH', this.checkSgOpenSsh.bind(this));
+    this.ruleChecks.set('EC2_SG_OPEN_RDP', this.checkSgOpenRdp.bind(this));
+    this.ruleChecks.set('EC2_UNENCRYPTED_EBS', this.checkEbsEncryption.bind(this));
+    this.ruleChecks.set('CLOUDTRAIL_NOT_ENABLED', this.checkCloudtrailEnabled.bind(this));
+    this.ruleChecks.set('RDS_PUBLICLY_ACCESSIBLE', this.checkRdsPublic.bind(this));
+    this.ruleChecks.set('RDS_NO_ENCRYPTION', this.checkRdsEncryption.bind(this));
+    this.ruleChecks.set('EKS_PUBLIC_ENDPOINT', this.checkEksPublicEndpoint.bind(this));
+  }
 
-    try {
-      const hclContent = await this.parseHCL(filePath);
-      const resources = this.extractResourcesFromHCL(hclContent, filePath);
-      const variables = this.extractVariables(hclContent);
-      const outputs = this.extractOutputs(hclContent);
-      const metadata = this.extractMetadata(hclContent);
+  // =========================================================================
+  // IaCParser Interface Implementation
+  // =========================================================================
 
-      return {
-        format: IaCFormat.TERRAFORM,
-        resources,
-        variables,
-        outputs,
-        metadata,
-      };
-    } catch (error) {
-      throw new Error(`Failed to parse Terraform file ${filePath}: ${error}`);
-    }
+  /**
+   * Parse a Terraform file and return ParsedInfrastructure
+   * Required by IaCParser interface
+   */
+  async parse(filePath: string, _format: IaCFormat): Promise<ParsedInfrastructure> {
+    const content = await fs.readFile(filePath, 'utf-8');
+    const parsed = await this.parseHCLContent(filePath, content);
+    const resources = this.extractResourcesFromHCL(parsed, content, filePath);
+
+    return {
+      format: IaCFormat.TERRAFORM,
+      resources: resources.map((r) => this.toResource(r)),
+      variables: this.extractVariables(parsed),
+      outputs: this.extractOutputs(parsed),
+      metadata: {
+        filePath,
+        parsedAt: new Date(),
+      },
+    };
   }
 
   /**
    * Validate parsed infrastructure
+   * Required by IaCParser interface
    */
   validate(parsed: ParsedInfrastructure): ValidationResult {
-    const errors: ValidationError[] = [];
-    const warnings: ValidationWarning[] = [];
+    const errors: Array<{ message: string; code?: string }> = [];
+    const warnings: Array<{ message: string; code?: string }> = [];
 
-    // Validate format
-    if (parsed.format !== IaCFormat.TERRAFORM) {
-      errors.push({
-        message: `Expected TERRAFORM format, got ${parsed.format}`,
-        code: 'INVALID_FORMAT',
-      });
-    }
-
-    // Validate resources
-    for (const resource of parsed.resources) {
-      if (!resource.id) {
-        errors.push({
-          message: `Resource missing ID`,
-          code: 'MISSING_RESOURCE_ID',
-        });
-      }
-
-      if (!resource.type) {
-        errors.push({
-          message: `Resource ${resource.id} missing type`,
-          code: 'MISSING_RESOURCE_TYPE',
-        });
-      }
-
-      // Check for common misconfigurations
-      if (resource.type === 'aws_s3_bucket' && resource.properties.acl === 'public-read') {
-        warnings.push({
-          message: `Resource ${resource.id} has public-read ACL`,
-          code: 'PUBLIC_S3_BUCKET',
-        });
-      }
-    }
-
-    // Validate variable references
-    const variableNames = new Set(parsed.variables.map((v) => v.name));
-    for (const resource of parsed.resources) {
-      this.checkVariableReferences(resource.properties, variableNames, warnings);
+    // Basic validation
+    if (!parsed.resources || parsed.resources.length === 0) {
+      warnings.push({ message: 'No resources found in parsed infrastructure' });
     }
 
     return {
@@ -108,144 +149,25 @@ export class TerraformParser implements IaCParser {
 
   /**
    * Extract resources from parsed infrastructure
+   * Required by IaCParser interface
    */
   extractResources(parsed: ParsedInfrastructure): Resource[] {
     return parsed.resources;
   }
 
   /**
-   * Parse HCL content using hcl2json
-   * Note: This requires terraform or hcl2json to be installed
+   * Convert internal ParsedResource to Resource interface
    */
-  private async parseHCL(filePath: string): Promise<HCLParsedOutput> {
-    try {
-      // Check if file exists
-      await fs.access(filePath);
-
-      // For now, return a basic parsed structure
-      // In production, this would use terraform show -json or hcl2json
-      const content = await fs.readFile(filePath, 'utf-8');
-      
-      // Simple regex-based parsing for basic Terraform syntax
-      // This is a simplified implementation for demonstration
-      return this.parseHCLSimple(content);
-    } catch (error) {
-      throw new Error(`Failed to parse HCL: ${error}`);
-    }
-  }
-
-  /**
-   * Simple HCL parser for basic Terraform syntax
-   * Note: This is a simplified implementation. Production use should use proper HCL parser.
-   */
-  private parseHCLSimple(content: string): HCLParsedOutput {
-    const result: HCLParsedOutput = {};
-
-    // Parse resources
-    const resourceRegex = /resource\s+"([^"]+)"\s+"([^"]+)"\s+\{([^}]+)\}/gs;
-    let match;
-    
-    while ((match = resourceRegex.exec(content)) !== null) {
-      const [, type, name, body] = match;
-      if (!result.resource) result.resource = {};
-      if (!result.resource[type]) result.resource[type] = {};
-      result.resource[type][name] = this.parseBlock(body);
-    }
-
-    // Parse variables
-    const variableRegex = /variable\s+"([^"]+)"\s+\{([^}]+)\}/gs;
-    while ((match = variableRegex.exec(content)) !== null) {
-      const [, name, body] = match;
-      if (!result.variable) result.variable = {};
-      result.variable[name] = this.parseBlock(body);
-    }
-
-    // Parse outputs
-    const outputRegex = /output\s+"([^"]+)"\s+\{([^}]+)\}/gs;
-    while ((match = outputRegex.exec(content)) !== null) {
-      const [, name, body] = match;
-      if (!result.output) result.output = {};
-      result.output[name] = this.parseBlock(body);
-    }
-
-    return result;
-  }
-
-  /**
-   * Parse a block of HCL content
-   */
-  private parseBlock(content: string): Record<string, any> {
-    const result: Record<string, any> = {};
-    
-    // Parse simple key = value pairs
-    const kvRegex = /(\w+)\s*=\s*([^\n]+)/g;
-    let match;
-    
-    while ((match = kvRegex.exec(content)) !== null) {
-      const [, key, value] = match;
-      result[key] = value.trim().replace(/^["']|["']$/g, '');
-    }
-
-    return result;
-  }
-
-  /**
-   * Extract resources from HCL parsed output
-   */
-  private extractResourcesFromHCL(hcl: HCLParsedOutput, filePath: string): Resource[] {
-    const resources: Resource[] = [];
-
-    if (!hcl.resource) {
-      return resources;
-    }
-
-    // Iterate through resource types
-    for (const [resourceType, resourceInstances] of Object.entries(hcl.resource)) {
-      // Iterate through resource instances
-      for (const [resourceName, resourceConfig] of Object.entries(resourceInstances)) {
-        const resource = this.normalizeResource(
-          resourceType,
-          resourceName,
-          resourceConfig,
-          filePath
-        );
-        resources.push(resource);
-      }
-    }
-
-    return resources;
-  }
-
-  /**
-   * Normalize Terraform resource to common Resource interface
-   */
-  private normalizeResource(
-    type: string,
-    name: string,
-    config: Record<string, any>,
-    _filePath: string
-  ): Resource {
-    // Extract service from resource type (e.g., aws_s3_bucket -> s3)
-    const service = this.extractService(type);
-
-    // Handle variable interpolation
-    const properties = this.resolveVariableInterpolation(config);
-
-    // Extract tags
-    const tags = properties.tags || {};
-
-    // Extract dependencies
-    const relationships = this.extractDependencies(config);
-
+  private toResource(pr: ParsedResource): Resource {
     return {
-      id: `${type}.${name}`,
-      type,
-      service,
-      region: properties.region || 'us-east-1', // Default region
-      account: properties.account || 'unknown',
-      properties,
-      tags,
-      relationships,
+      id: `${pr.type}.${pr.name}`,
+      type: pr.type,
+      service: this.getServiceFromType(pr.type),
+      region: 'unknown',
+      account: 'unknown',
+      properties: pr.config,
+      tags: (pr.config.tags as Record<string, string>) || {},
+      relationships: [],
       source: ResourceSource.IAC,
       timestamp: new Date(),
     };
@@ -254,163 +176,754 @@ export class TerraformParser implements IaCParser {
   /**
    * Extract service name from resource type
    */
-  private extractService(resourceType: string): string {
-    // Format: provider_service_resource (e.g., aws_s3_bucket)
-    const parts = resourceType.split('_');
-    if (parts.length >= 2) {
-      return parts[1]; // Return service part
-    }
-    return 'unknown';
+  private getServiceFromType(resourceType: string): string {
+    const serviceMap: Record<string, string> = {
+      aws_s3_bucket: 's3',
+      aws_iam_policy: 'iam',
+      aws_iam_role_policy: 'iam',
+      aws_iam_user_policy: 'iam',
+      aws_iam_group_policy: 'iam',
+      aws_security_group: 'ec2',
+      aws_security_group_rule: 'ec2',
+      aws_ebs_volume: 'ec2',
+      aws_instance: 'ec2',
+      aws_cloudtrail: 'cloudtrail',
+      aws_db_instance: 'rds',
+      aws_rds_cluster: 'rds',
+      aws_eks_cluster: 'eks',
+    };
+    return serviceMap[resourceType] || 'aws';
   }
 
   /**
-   * Resolve variable interpolation in properties
+   * Extract variables from parsed HCL
    */
-  private resolveVariableInterpolation(config: Record<string, any>): Record<string, any> {
-    const resolved: Record<string, any> = {};
+  private extractVariables(parsed: HCLParseResult): Array<{ name: string; type: string; defaultValue?: unknown; description?: string }> {
+    const variables: Array<{ name: string; type: string; defaultValue?: unknown; description?: string }> = [];
 
-    for (const [key, value] of Object.entries(config)) {
-      if (typeof value === 'string' && value.includes('${var.')) {
-        // Mark as variable reference but keep the reference string
-        resolved[key] = value;
-      } else if (typeof value === 'object' && value !== null) {
-        resolved[key] = this.resolveVariableInterpolation(value);
-      } else {
-        resolved[key] = value;
-      }
-    }
-
-    return resolved;
-  }
-
-  /**
-   * Extract dependencies from resource configuration
-   */
-  private extractDependencies(config: Record<string, any>): Array<{ type: string; targetId: string }> {
-    const relationships: Array<{ type: string; targetId: string }> = [];
-
-    // Check for explicit depends_on
-    if (config.depends_on && Array.isArray(config.depends_on)) {
-      for (const dep of config.depends_on) {
-        relationships.push({
-          type: 'depends_on',
-          targetId: dep,
+    if (parsed.variable) {
+      for (const [name, config] of Object.entries(parsed.variable)) {
+        const varConfig = config as Record<string, unknown>;
+        variables.push({
+          name,
+          type: (varConfig.type as string) || 'any',
+          defaultValue: varConfig.default,
+          description: varConfig.description as string | undefined,
         });
       }
-    }
-
-    // Check for implicit dependencies (resource references)
-    this.findResourceReferences(config, relationships);
-
-    return relationships;
-  }
-
-  /**
-   * Find resource references in configuration
-   */
-  private findResourceReferences(
-    obj: any,
-    relationships: Array<{ type: string; targetId: string }>
-  ): void {
-    if (typeof obj === 'string') {
-      // Look for resource references like ${aws_s3_bucket.example.id}
-      const refMatch = obj.match(/\$\{([a-z_]+\.[a-z_]+)\./);
-      if (refMatch) {
-        relationships.push({
-          type: 'reference',
-          targetId: refMatch[1],
-        });
-      }
-    } else if (Array.isArray(obj)) {
-      obj.forEach((item) => this.findResourceReferences(item, relationships));
-    } else if (typeof obj === 'object' && obj !== null) {
-      Object.values(obj).forEach((value) => this.findResourceReferences(value, relationships));
-    }
-  }
-
-  /**
-   * Extract variables from HCL
-   */
-  private extractVariables(hcl: HCLParsedOutput): Variable[] {
-    const variables: Variable[] = [];
-
-    if (!hcl.variable) {
-      return variables;
-    }
-
-    for (const [varName, varConfig] of Object.entries(hcl.variable)) {
-      variables.push({
-        name: varName,
-        type: varConfig.type || 'string',
-        defaultValue: varConfig.default,
-        description: varConfig.description,
-      });
     }
 
     return variables;
   }
 
   /**
-   * Extract outputs from HCL
+   * Extract outputs from parsed HCL
    */
-  private extractOutputs(hcl: HCLParsedOutput): Output[] {
-    const outputs: Output[] = [];
+  private extractOutputs(parsed: HCLParseResult): Array<{ name: string; value: unknown; description?: string }> {
+    const outputs: Array<{ name: string; value: unknown; description?: string }> = [];
 
-    if (!hcl.output) {
-      return outputs;
-    }
-
-    for (const [outputName, outputConfig] of Object.entries(hcl.output)) {
-      outputs.push({
-        name: outputName,
-        value: outputConfig.value,
-        description: outputConfig.description,
-      });
+    if (parsed.output) {
+      for (const [name, config] of Object.entries(parsed.output)) {
+        const outConfig = config as Record<string, unknown>;
+        outputs.push({
+          name,
+          value: outConfig.value,
+          description: outConfig.description as string | undefined,
+        });
+      }
     }
 
     return outputs;
   }
 
   /**
-   * Extract metadata from HCL
+   * Scan a directory for Terraform files and run security checks
    */
-  private extractMetadata(hcl: HCLParsedOutput): Metadata {
-    const metadata: Metadata = {};
+  async scanDirectory(dirPath: string): Promise<TerraformScanResult> {
+    const findings: Finding[] = [];
+    const errors: Array<{ file: string; error: string }> = [];
+    let resourceCount = 0;
 
-    if (hcl.terraform) {
-      metadata.terraformVersion = hcl.terraform.required_version;
-      metadata.requiredProviders = hcl.terraform.required_providers;
+    // Find all .tf files recursively
+    const tfFiles = await this.findTerraformFiles(dirPath);
+
+    for (const filePath of tfFiles) {
+      try {
+        const content = await fs.readFile(filePath, 'utf-8');
+        const parsed = await this.parseHCLContent(filePath, content);
+        const resources = this.extractResourcesFromHCL(parsed, content, filePath);
+
+        resourceCount += resources.length;
+
+        // Run all rule checks against each resource
+        for (const resource of resources) {
+          for (const [, checkFn] of this.ruleChecks) {
+            const finding = checkFn(
+              resource.type,
+              resource.name,
+              resource.config,
+              resource.rawBlock,
+              resource.filePath
+            );
+            if (finding) {
+              findings.push(finding);
+            }
+          }
+        }
+      } catch (error) {
+        errors.push({
+          file: filePath,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
 
-    if (hcl.provider) {
-      metadata.providers = hcl.provider;
-    }
-
-    return metadata;
+    return {
+      findings,
+      resourceCount,
+      fileCount: tfFiles.length,
+      errors,
+    };
   }
 
   /**
-   * Check for undefined variable references
+   * Find all .tf files in a directory recursively
    */
-  private checkVariableReferences(
-    obj: any,
-    variableNames: Set<string>,
-    warnings: ValidationWarning[]
-  ): void {
-    if (typeof obj === 'string') {
-      const varMatch = obj.match(/\$\{var\.([a-z_]+)\}/);
-      if (varMatch && !variableNames.has(varMatch[1])) {
-        warnings.push({
-          message: `Reference to undefined variable: ${varMatch[1]}`,
-          code: 'UNDEFINED_VARIABLE',
+  private async findTerraformFiles(dirPath: string): Promise<string[]> {
+    const files: string[] = [];
+
+    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const fullPath = path.join(dirPath, entry.name);
+
+      if (entry.isDirectory()) {
+        // Skip node_modules and hidden directories
+        if (!entry.name.startsWith('.') && entry.name !== 'node_modules') {
+          const subFiles = await this.findTerraformFiles(fullPath);
+          files.push(...subFiles);
+        }
+      } else if (entry.isFile() && entry.name.endsWith('.tf')) {
+        files.push(fullPath);
+      }
+    }
+
+    return files;
+  }
+
+  /**
+   * Parse HCL content using @cdktf/hcl2json
+   */
+  private async parseHCLContent(filePath: string, content: string): Promise<HCLParseResult> {
+    return parseHCL(filePath, content) as Promise<HCLParseResult>;
+  }
+
+  /**
+   * Extract resources from parsed HCL (internal method)
+   */
+  private extractResourcesFromHCL(
+    parsed: HCLParseResult,
+    originalContent: string,
+    filePath: string
+  ): ParsedResource[] {
+    const resources: ParsedResource[] = [];
+
+    if (!parsed.resource) {
+      return resources;
+    }
+
+    for (const [resourceType, instances] of Object.entries(parsed.resource)) {
+      for (const [resourceName, configs] of Object.entries(instances)) {
+        // configs is an array, usually with one element
+        const config = configs[0] || {};
+
+        // Extract raw block from original content
+        const rawBlock = this.extractRawBlock(originalContent, resourceType, resourceName);
+
+        resources.push({
+          type: resourceType,
+          name: resourceName,
+          config: config as Record<string, unknown>,
+          rawBlock,
+          filePath,
         });
       }
-    } else if (Array.isArray(obj)) {
-      obj.forEach((item) => this.checkVariableReferences(item, variableNames, warnings));
-    } else if (typeof obj === 'object' && obj !== null) {
-      Object.values(obj).forEach((value) =>
-        this.checkVariableReferences(value, variableNames, warnings)
+    }
+
+    return resources;
+  }
+
+  /**
+   * Extract raw HCL block for a resource from original content
+   */
+  private extractRawBlock(content: string, resourceType: string, resourceName: string): string {
+    // Match resource block with proper brace balancing
+    const resourcePattern = new RegExp(
+      `resource\\s+"${resourceType}"\\s+"${resourceName}"\\s*\\{`,
+      'g'
+    );
+
+    const match = resourcePattern.exec(content);
+    if (!match) {
+      return '';
+    }
+
+    const startIndex = match.index;
+    let braceCount = 0;
+    let endIndex = startIndex;
+    let inString = false;
+    let stringChar = '';
+
+    for (let i = match.index + match[0].length - 1; i < content.length; i++) {
+      const char = content[i];
+      const prevChar = i > 0 ? content[i - 1] : '';
+
+      // Handle string literals
+      if ((char === '"' || char === "'") && prevChar !== '\\') {
+        if (!inString) {
+          inString = true;
+          stringChar = char;
+        } else if (char === stringChar) {
+          inString = false;
+        }
+      }
+
+      if (!inString) {
+        if (char === '{') braceCount++;
+        if (char === '}') braceCount--;
+
+        if (braceCount === 0) {
+          endIndex = i + 1;
+          break;
+        }
+      }
+    }
+
+    return content.substring(startIndex, endIndex);
+  }
+
+  /**
+   * Create a Finding object from rule violation
+   */
+  private createFinding(
+    ruleId: string,
+    title: string,
+    description: string,
+    severity: Severity,
+    resourceType: string,
+    resourceName: string,
+    rawBlock: string,
+    filePath: string
+  ): Finding {
+    const mapping = MAPPINGS[ruleId] as RuleMappingEntry | undefined;
+
+    const frameworks: FrameworkMapping[] = mapping?.frameworks.map((f) => ({
+      framework: f.framework,
+      controlId: f.controlId,
+      controlTitle: f.controlTitle,
+      required: true,
+    })) || [];
+
+    const mitre: MitreMapping | undefined = mapping?.mitre
+      ? {
+          techniqueId: mapping.mitre.techniqueId,
+          techniqueName: mapping.mitre.techniqueName,
+          tactic: mapping.mitre.tactic,
+          url: mapping.mitre.url,
+        }
+      : undefined;
+
+    const resource: FindingResource = {
+      type: resourceType,
+      id: `${resourceType}.${resourceName}`,
+      location: {
+        file: filePath,
+        startLine: 0, // Could be computed from rawBlock position
+        endLine: 0,
+      },
+    };
+
+    return {
+      id: uuidv4(),
+      title,
+      description,
+      severity,
+      resource,
+      source: 'static',
+      provider: 'terraform',
+      rawBlock,
+      frameworks,
+      mitre,
+      detectedAt: new Date(),
+    };
+  }
+
+  // =========================================================================
+  // Security Rule Check Functions
+  // =========================================================================
+
+  /**
+   * S3_PUBLIC_ACL: Check for S3 bucket with public ACL
+   */
+  private checkS3PublicAcl(
+    resourceType: string,
+    resourceName: string,
+    config: Record<string, unknown>,
+    rawBlock: string,
+    filePath: string
+  ): Finding | null {
+    if (resourceType !== 'aws_s3_bucket') return null;
+
+    const acl = config.acl as string | undefined;
+    const publicAcls = ['public-read', 'public-read-write', 'authenticated-read'];
+
+    if (acl && publicAcls.includes(acl)) {
+      return this.createFinding(
+        'S3_PUBLIC_ACL',
+        'S3 bucket allows public ACL',
+        `S3 bucket "${resourceName}" has ACL set to "${acl}" which allows public access. This can expose sensitive data to the internet.`,
+        'CRITICAL',
+        resourceType,
+        resourceName,
+        rawBlock,
+        filePath
       );
     }
+
+    return null;
+  }
+
+  /**
+   * S3_NO_ENCRYPTION: Check for S3 bucket missing encryption
+   */
+  private checkS3Encryption(
+    resourceType: string,
+    resourceName: string,
+    config: Record<string, unknown>,
+    rawBlock: string,
+    filePath: string
+  ): Finding | null {
+    if (resourceType !== 'aws_s3_bucket') return null;
+
+    // Check for server_side_encryption_configuration block
+    const encryption = config.server_side_encryption_configuration as unknown[] | undefined;
+
+    if (!encryption || encryption.length === 0) {
+      return this.createFinding(
+        'S3_NO_ENCRYPTION',
+        'S3 bucket missing server-side encryption',
+        `S3 bucket "${resourceName}" does not have server-side encryption configured. Data at rest should be encrypted.`,
+        'HIGH',
+        resourceType,
+        resourceName,
+        rawBlock,
+        filePath
+      );
+    }
+
+    return null;
+  }
+
+  /**
+   * S3_NO_VERSIONING: Check for S3 bucket missing versioning
+   */
+  private checkS3Versioning(
+    resourceType: string,
+    resourceName: string,
+    config: Record<string, unknown>,
+    rawBlock: string,
+    filePath: string
+  ): Finding | null {
+    if (resourceType !== 'aws_s3_bucket') return null;
+
+    // Check for versioning block
+    const versioning = config.versioning as Array<Record<string, unknown>> | undefined;
+    const enabled = versioning?.[0]?.enabled;
+
+    if (!versioning || enabled !== true) {
+      return this.createFinding(
+        'S3_NO_VERSIONING',
+        'S3 bucket versioning not enabled',
+        `S3 bucket "${resourceName}" does not have versioning enabled. Versioning protects against accidental deletion and enables recovery.`,
+        'MEDIUM',
+        resourceType,
+        resourceName,
+        rawBlock,
+        filePath
+      );
+    }
+
+    return null;
+  }
+
+  /**
+   * IAM_WILDCARD_ACTION: Check for IAM policy with wildcard actions
+   */
+  private checkIamWildcard(
+    resourceType: string,
+    resourceName: string,
+    config: Record<string, unknown>,
+    rawBlock: string,
+    filePath: string
+  ): Finding | null {
+    const iamPolicyTypes = ['aws_iam_policy', 'aws_iam_role_policy', 'aws_iam_user_policy', 'aws_iam_group_policy'];
+    if (!iamPolicyTypes.includes(resourceType)) return null;
+
+    // Get policy document
+    let policyDoc: string | Record<string, unknown> | undefined = config.policy as string | Record<string, unknown> | undefined;
+
+    if (typeof policyDoc === 'string') {
+      try {
+        policyDoc = JSON.parse(policyDoc);
+      } catch {
+        // Check raw block for wildcards if JSON parse fails
+        if (rawBlock.includes('"Action"') && rawBlock.includes('"*"')) {
+          return this.createFinding(
+            'IAM_WILDCARD_ACTION',
+            'IAM policy contains wildcard actions',
+            `IAM policy "${resourceName}" appears to contain wildcard (*) actions. This violates the principle of least privilege.`,
+            'CRITICAL',
+            resourceType,
+            resourceName,
+            rawBlock,
+            filePath
+          );
+        }
+        return null;
+      }
+    }
+
+    if (typeof policyDoc === 'object' && policyDoc !== null) {
+      const statements = (policyDoc as Record<string, unknown>).Statement as Array<Record<string, unknown>> | undefined;
+
+      if (statements) {
+        for (const stmt of statements) {
+          if (stmt.Effect === 'Allow') {
+            const action = stmt.Action;
+            if (action === '*' || (Array.isArray(action) && action.includes('*'))) {
+              return this.createFinding(
+                'IAM_WILDCARD_ACTION',
+                'IAM policy contains wildcard actions',
+                `IAM policy "${resourceName}" grants Action: "*" which provides full access to all AWS services. Use specific actions instead.`,
+                'CRITICAL',
+                resourceType,
+                resourceName,
+                rawBlock,
+                filePath
+              );
+            }
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * EC2_SG_OPEN_SSH: Check for security group with SSH open to 0.0.0.0/0
+   */
+  private checkSgOpenSsh(
+    resourceType: string,
+    resourceName: string,
+    config: Record<string, unknown>,
+    rawBlock: string,
+    filePath: string
+  ): Finding | null {
+    if (resourceType !== 'aws_security_group' && resourceType !== 'aws_security_group_rule') return null;
+
+    return this.checkOpenPort(resourceType, resourceName, config, rawBlock, filePath, 22, 'SSH', 'EC2_SG_OPEN_SSH');
+  }
+
+  /**
+   * EC2_SG_OPEN_RDP: Check for security group with RDP open to 0.0.0.0/0
+   */
+  private checkSgOpenRdp(
+    resourceType: string,
+    resourceName: string,
+    config: Record<string, unknown>,
+    rawBlock: string,
+    filePath: string
+  ): Finding | null {
+    if (resourceType !== 'aws_security_group' && resourceType !== 'aws_security_group_rule') return null;
+
+    return this.checkOpenPort(resourceType, resourceName, config, rawBlock, filePath, 3389, 'RDP', 'EC2_SG_OPEN_RDP');
+  }
+
+  /**
+   * Helper: Check for open port in security group
+   */
+  private checkOpenPort(
+    resourceType: string,
+    resourceName: string,
+    config: Record<string, unknown>,
+    rawBlock: string,
+    filePath: string,
+    port: number,
+    portName: string,
+    ruleId: string
+  ): Finding | null {
+    // For aws_security_group_rule
+    if (resourceType === 'aws_security_group_rule') {
+      const type = config.type as string | undefined;
+      if (type !== 'ingress') return null;
+
+      const fromPort = config.from_port as number | undefined;
+      const toPort = config.to_port as number | undefined;
+      const cidrBlocks = config.cidr_blocks as string[] | undefined;
+
+      if (this.portInRange(port, fromPort, toPort) && this.hasOpenCidr(cidrBlocks)) {
+        return this.createFinding(
+          ruleId,
+          `Security group allows ${portName} from 0.0.0.0/0`,
+          `Security group rule "${resourceName}" allows ${portName} (port ${port}) from 0.0.0.0/0. This exposes the service to the internet.`,
+          'CRITICAL',
+          resourceType,
+          resourceName,
+          rawBlock,
+          filePath
+        );
+      }
+    }
+
+    // For aws_security_group with inline ingress
+    if (resourceType === 'aws_security_group') {
+      const ingress = config.ingress as Array<Record<string, unknown>> | undefined;
+
+      if (ingress) {
+        for (const rule of ingress) {
+          const fromPort = rule.from_port as number | undefined;
+          const toPort = rule.to_port as number | undefined;
+          const cidrBlocks = rule.cidr_blocks as string[] | undefined;
+
+          if (this.portInRange(port, fromPort, toPort) && this.hasOpenCidr(cidrBlocks)) {
+            return this.createFinding(
+              ruleId,
+              `Security group allows ${portName} from 0.0.0.0/0`,
+              `Security group "${resourceName}" allows ${portName} (port ${port}) ingress from 0.0.0.0/0. This exposes the service to the internet.`,
+              'CRITICAL',
+              resourceType,
+              resourceName,
+              rawBlock,
+              filePath
+            );
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
+  private portInRange(port: number, from?: number, to?: number): boolean {
+    if (from === undefined || to === undefined) return false;
+    return port >= from && port <= to;
+  }
+
+  private hasOpenCidr(cidrBlocks?: string[]): boolean {
+    if (!cidrBlocks) return false;
+    return cidrBlocks.includes('0.0.0.0/0') || cidrBlocks.includes('::/0');
+  }
+
+  /**
+   * EC2_UNENCRYPTED_EBS: Check for unencrypted EBS volumes
+   */
+  private checkEbsEncryption(
+    resourceType: string,
+    resourceName: string,
+    config: Record<string, unknown>,
+    rawBlock: string,
+    filePath: string
+  ): Finding | null {
+    if (resourceType === 'aws_ebs_volume') {
+      if (config.encrypted !== true) {
+        return this.createFinding(
+          'EC2_UNENCRYPTED_EBS',
+          'EBS volume not encrypted',
+          `EBS volume "${resourceName}" does not have encryption enabled. Enable encryption to protect data at rest.`,
+          'HIGH',
+          resourceType,
+          resourceName,
+          rawBlock,
+          filePath
+        );
+      }
+    }
+
+    if (resourceType === 'aws_instance') {
+      const ebsBlockDevices = config.ebs_block_device as Array<Record<string, unknown>> | undefined;
+
+      if (ebsBlockDevices) {
+        for (const device of ebsBlockDevices) {
+          if (device.encrypted !== true) {
+            return this.createFinding(
+              'EC2_UNENCRYPTED_EBS',
+              'EC2 instance has unencrypted EBS volume',
+              `EC2 instance "${resourceName}" has an EBS block device without encryption enabled.`,
+              'HIGH',
+              resourceType,
+              resourceName,
+              rawBlock,
+              filePath
+            );
+          }
+        }
+      }
+
+      // Check root_block_device
+      const rootBlockDevice = config.root_block_device as Array<Record<string, unknown>> | undefined;
+      if (rootBlockDevice?.[0]?.encrypted === false) {
+        return this.createFinding(
+          'EC2_UNENCRYPTED_EBS',
+          'EC2 instance has unencrypted root volume',
+          `EC2 instance "${resourceName}" has an unencrypted root block device.`,
+          'HIGH',
+          resourceType,
+          resourceName,
+          rawBlock,
+          filePath
+        );
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * CLOUDTRAIL_NOT_ENABLED: Check for CloudTrail with logging disabled
+   */
+  private checkCloudtrailEnabled(
+    resourceType: string,
+    resourceName: string,
+    config: Record<string, unknown>,
+    rawBlock: string,
+    filePath: string
+  ): Finding | null {
+    if (resourceType !== 'aws_cloudtrail') return null;
+
+    // Check if logging is explicitly disabled
+    if (config.enable_logging === false) {
+      return this.createFinding(
+        'CLOUDTRAIL_NOT_ENABLED',
+        'CloudTrail logging is disabled',
+        `CloudTrail "${resourceName}" has enable_logging set to false. CloudTrail should be enabled for audit logging.`,
+        'CRITICAL',
+        resourceType,
+        resourceName,
+        rawBlock,
+        filePath
+      );
+    }
+
+    // Check for log file validation
+    if (config.enable_log_file_validation === false) {
+      return this.createFinding(
+        'CLOUDTRAIL_NOT_ENABLED',
+        'CloudTrail log file validation disabled',
+        `CloudTrail "${resourceName}" has log file validation disabled. Enable it to detect log tampering.`,
+        'HIGH',
+        resourceType,
+        resourceName,
+        rawBlock,
+        filePath
+      );
+    }
+
+    return null;
+  }
+
+  /**
+   * RDS_PUBLICLY_ACCESSIBLE: Check for RDS instance that is publicly accessible
+   */
+  private checkRdsPublic(
+    resourceType: string,
+    resourceName: string,
+    config: Record<string, unknown>,
+    rawBlock: string,
+    filePath: string
+  ): Finding | null {
+    if (resourceType !== 'aws_db_instance' && resourceType !== 'aws_rds_cluster') return null;
+
+    if (config.publicly_accessible === true) {
+      return this.createFinding(
+        'RDS_PUBLICLY_ACCESSIBLE',
+        'RDS instance is publicly accessible',
+        `RDS instance "${resourceName}" is publicly accessible. Databases should be in private subnets.`,
+        'CRITICAL',
+        resourceType,
+        resourceName,
+        rawBlock,
+        filePath
+      );
+    }
+
+    return null;
+  }
+
+  /**
+   * RDS_NO_ENCRYPTION: Check for RDS instance without storage encryption
+   */
+  private checkRdsEncryption(
+    resourceType: string,
+    resourceName: string,
+    config: Record<string, unknown>,
+    rawBlock: string,
+    filePath: string
+  ): Finding | null {
+    if (resourceType !== 'aws_db_instance' && resourceType !== 'aws_rds_cluster') return null;
+
+    if (config.storage_encrypted !== true) {
+      return this.createFinding(
+        'RDS_NO_ENCRYPTION',
+        'RDS instance storage not encrypted',
+        `RDS instance "${resourceName}" does not have storage encryption enabled. Enable encryption to protect data at rest.`,
+        'HIGH',
+        resourceType,
+        resourceName,
+        rawBlock,
+        filePath
+      );
+    }
+
+    return null;
+  }
+
+  /**
+   * EKS_PUBLIC_ENDPOINT: Check for EKS cluster with public endpoint only
+   */
+  private checkEksPublicEndpoint(
+    resourceType: string,
+    resourceName: string,
+    config: Record<string, unknown>,
+    rawBlock: string,
+    filePath: string
+  ): Finding | null {
+    if (resourceType !== 'aws_eks_cluster') return null;
+
+    const vpcConfig = config.vpc_config as Array<Record<string, unknown>> | undefined;
+
+    if (vpcConfig && vpcConfig[0]) {
+      const endpointPublicAccess = vpcConfig[0].endpoint_public_access;
+      const endpointPrivateAccess = vpcConfig[0].endpoint_private_access;
+
+      // Flag if public access is enabled AND private access is disabled
+      if (endpointPublicAccess === true && endpointPrivateAccess === false) {
+        return this.createFinding(
+          'EKS_PUBLIC_ENDPOINT',
+          'EKS cluster API endpoint is publicly accessible',
+          `EKS cluster "${resourceName}" has public endpoint access enabled with private access disabled. Enable private endpoint access.`,
+          'HIGH',
+          resourceType,
+          resourceName,
+          rawBlock,
+          filePath
+        );
+      }
+    }
+
+    return null;
   }
 }
+
+// Export a singleton for convenience
+export const terraformParser = new TerraformParser();

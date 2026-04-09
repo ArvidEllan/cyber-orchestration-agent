@@ -12,7 +12,6 @@ import {
 } from '@aws-sdk/client-guardduty';
 import {
   ThreatFinding,
-  Finding,
   Severity,
   Category,
   FindingStatus,

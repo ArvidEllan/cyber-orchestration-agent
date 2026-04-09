@@ -7,4 +7,5 @@ export { TerraformParser } from './terraform-parser';
 export { CloudFormationParser } from './cloudformation-parser';
 export { CDKParser } from './cdk-parser';
 export { ParserFactory } from './parser-factory';
+export { IaCSecurityScanner, iacSecurityScanner } from './iac-security-scanner';
 export * from './parser-utils';

@@ -14,3 +14,4 @@ export { EKSAuditor } from './eks-auditor';
 export { APIGatewayAuditor } from './apigateway-auditor';
 export { SecurityServicesAuditor } from './security-services-auditor';
 export { DriftDetector } from './drift-detector';
+export { AuditorOrchestrator, createAuditorOrchestrator } from './auditor-orchestrator';
